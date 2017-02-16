@@ -7,7 +7,7 @@ import wave
 
 
 #### CONFIG ####
-#Amazon S3 configuration
+# Amazon S3 configuration
 # uploaded files end up in specified bucket,
 # with key S3_BUCKET_UPLOAD_ROOT/filename
 AWS_ACCESS_KEY='XXXX'
@@ -15,10 +15,15 @@ AWS_SECRET_KEY='XXXXXX'
 S3_BUCKET='XXXX'
 S3_BUCKET_UPLOAD_ROOT='audio/'
 
-API_SERVER='localhost:4060'
+# API server location and access
+API_SERVER='http://localhost:4060'
+API_SERVER_TOKEN='exploreapollo'
 
 ################
 
+
+HEADERS = {'Authorization':"Token token=%s" % API_SERVER_TOKEN,
+	'content-type':'application/json'}
 
 def filenameToParams(filename):
 	'''convert filename to (mission, recorder, channel, fileMetStart)
@@ -66,7 +71,7 @@ def transcriptUpload(filepath):
 	mission, recorder, channel, fileMetStart = filenameToParams(filepath)
 	
 	with open(filepath) as f:
-		for line in f:
+		for lineNo, line in enumerate(f):
 			lineToks = [tok.strip() for tok in line.split("\t")]
 			if len(lineToks) != 5:
 				continue
@@ -74,18 +79,26 @@ def transcriptUpload(filepath):
 			endMet = sToMs(lineToks[2]) + fileMetStart
 			text = lineToks[3]
 			speaker = lineToks[4]
-			##TODO - incomplete parameters.
+			##TODO - incomplete parameters (dummy person ID).
 			json = {
 				"text"      : text,
 				"met_start" : startMet,
 				"met_end"   : endMet,
-				"person_id" : "",
+				"person_id" : 4,
 				"channel_id": channel,
 				}
-			print("Dummy parse, transcript upload \n" + str(json))
-			#~ requests.post("%s/api/transcript_items" % API_SERVER,
-				#~ json=json)
-
+			response = requests.post("%s/api/transcript_items" % API_SERVER,
+				json=json,headers=HEADERS)
+			if response.ok:
+				pass
+			else:
+				print("Failed transcript %s:%d\n\t%s\n\t%s %s %s" % \
+					(filepath, lineNo+1, line, \
+					response.status_code, \
+					response.reason, \
+					response.text))
+				
+				
 
 def audioDataUpload(filepath,s3URL):
 	'''upload audio segment data to API server.  does NOT upload audio file'''
@@ -95,7 +108,6 @@ def audioDataUpload(filepath,s3URL):
 	mission, recorder, channel, fileMetStart = filenameToParams(filename)
 	fileMetEnd   = fileMetStart + getFileLengthMs(filepath)
 	
-	#TODO - incomplete parameters
 	json = {
 		"title"      : filename,
 		"url"        : s3URL,
@@ -104,8 +116,14 @@ def audioDataUpload(filepath,s3URL):
 		"channel_id" : channel,
 	}
 	
-	print("Dummy parse, audio upload \n" + str(json))
-	#requests.post("%s/api/audio_segments" % API_SERVER, json=json)
+	response =requests.post("%s/api/audio_segments" % API_SERVER,
+		json=json,headers=HEADERS)
+	if response.ok:
+		pass
+	else:
+		print("Failed audio segment %s\n\t%s %s %s" % \
+			(filepath, response.status_code, response.reason, \
+			response.text))
 
 
 
