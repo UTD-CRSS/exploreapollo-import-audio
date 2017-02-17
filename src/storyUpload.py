@@ -1,8 +1,40 @@
 import sys
 import csv
+import requests 
+import json
 
+#global variables
+storyuploadurl = 'http://localhost:4060/api/stories'
+momentuploadurl = 'http://localhost:4060/api/moments'	
+headers = {'content-type': 'application/json', 'Authorization': 'Token token="exploreapollo"'}
+
+def upload_story(storyTitle, storyDescription):
+	'''
+		uploads a story with storyTitle, storyDescription,
+		and empty moment_ids. Returns story_id so moments uploaded
+		later in script can use this to be associated with the story.
+	'''
+		
+	storyparams = {'title': '', 'description': '', 'moment_ids': []}	
+	storyparams['title'] = storyTitle
+	storyparams['description'] = storyDescription
+	
+	response = requests.post(storyuploadurl, json=storyparams, headers=headers)
+	
+	data = json.loads(response.text)
+	
+	return data["id"]
+
+
+
+
+
+
+#program begins here 
 storyTitle = sys.argv[1]
-#storyId = upload_story(storyTitle) --- upload story, get ID 
+storyId = upload_story(storyTitle, "placeholder") #upload story, get ID 
+
+print storyId
 
 with open('{0}.csv'.format(storyTitle), 'rb') as csvfile: 
  
@@ -27,10 +59,8 @@ with open('{0}.csv'.format(storyTitle), 'rb') as csvfile:
 		
 
 		
-		
-		
-		
-		
+
+	
 	
 
 
