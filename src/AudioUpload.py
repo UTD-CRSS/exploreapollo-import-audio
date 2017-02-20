@@ -3,23 +3,9 @@ import boto3
 import sys
 import os
 import requests
-import wave
+import subprocess
+from config import *
 
-
-#### CONFIG ####
-# Amazon S3 configuration
-# uploaded files end up in specified bucket,
-# with key S3_BUCKET_UPLOAD_ROOT/filename
-AWS_ACCESS_KEY='XXXX'
-AWS_SECRET_KEY='XXXXXX'
-S3_BUCKET='XXXX'
-S3_BUCKET_UPLOAD_ROOT='audio/'
-
-# API server location and access
-API_SERVER='http://localhost:4060'
-API_SERVER_TOKEN='exploreapollo'
-
-################
 
 
 HEADERS = {'Authorization':"Token token=%s" % API_SERVER_TOKEN,
@@ -48,22 +34,31 @@ def sToMs(s):
 
 def getFileLengthMs(filepath):
 	'''get the length of a wav file in ms'''
-	with wave.open(filepath) as f:
-		durationSec = f.getnframes() / float(f.getframerate())
+	#note - builtin wave library is not sufficient because it is unable
+	#to handle certain wave formats.
+	res = subprocess.run(['ffmpeg','-i',filepath],stderr=subprocess.PIPE,
+		universal_newlines=True)
+	for line in res.stderr.split('\n'):
+		if "Duration" in line:
+			timestr = line.split()[1]
+			hour, minute, sec = map(lambda s:float(s.strip(',')),timestr.split(':'))
+			durationSec = sec + 60*(minute + 60*hour)
+			
+		
 	return int(durationSec * 1000)
 
 
 _s3Client = None
 def s3Upload(filename,bucket,destfile):
 	'''Put a file in s3.'''
-	#~ global _s3Client
-	#~ if _s3Client is None:
-		#~ _s3Client = boto3.client('s3',
-			#~ aws_access_key_id=AWS_ACCESS_KEY,
-			#~ aws_secret_access_key=AWS_SECRET_KEY,
-		#~ )
-	#~ _s3Client.upload_file(filename,bucket,destfile)
-	print("Dummy S3 upload! %s -> %s" % (filename,destfile))
+	global _s3Client
+	if _s3Client is None:
+		_s3Client = boto3.client('s3',
+			aws_access_key_id=AWS_ACCESS_KEY,
+			aws_secret_access_key=AWS_SECRET_KEY,
+		)
+	_s3Client.upload_file(filename,bucket,destfile)
+	print("S3 upload, %s -> %s" % (filename,destfile))
 
 
 def transcriptUpload(filepath):
@@ -128,16 +123,17 @@ def audioDataUpload(filepath,s3URL):
 
 
 if __name__ == "__main__":
-	if len(sys.argv) < 2:
-		print("Usage: python %s <folder>" % sys.argv[0])
+	if len(sys.argv) != 3:
+		print("Usage: python %s <local base folder> <S3 base folder>" % sys.argv[0])
 		quit()
 	else:
 		localFolder = sys.argv[1]
+		s3Folder = pathlib.Path(sys.argv[2])
 	
 	wavFiles = set(os.path.splitext(str(i))[0] for i \
-		in pathlib.Path(localFolder).glob("*.wav"))
+		in pathlib.Path(localFolder).glob("**/*.wav"))
 	trsFiles = set(os.path.splitext(str(i))[0] for i \
-		in pathlib.Path(localFolder).glob("*.txt"))
+		in pathlib.Path(localFolder).glob("**/*.txt"))
 	
 	filesToProcess = wavFiles & trsFiles
 	wavMissingTrs = wavFiles - trsFiles
@@ -159,15 +155,18 @@ if __name__ == "__main__":
 		txtFilepath = "%s.txt" % filepath
 		wavFilepath = "%s.wav" % filepath
 		
+		s3TxtFilepath = s3Folder.joinpath(pathlib.Path(txtFilepath) \
+			.relative_to(localFolder))
+		s3WavFilepath = s3Folder.joinpath(pathlib.Path(wavFilepath) \
+			.relative_to(localFolder))
+		
 		#s3 upload
-		s3Upload(txtFilepath,S3_BUCKET,"%s%s" % \
-			(S3_BUCKET_UPLOAD_ROOT,txtFilepath))
-		s3Upload(wavFilepath,S3_BUCKET,"%s%s" % \
-			(S3_BUCKET_UPLOAD_ROOT,wavFilepath))
+		s3Upload(txtFilepath,S3_BUCKET,s3TxtFilepath)
+		s3Upload(wavFilepath,S3_BUCKET,s3WavFilepath)
 		
 		#API server upload
-		s3WavURL = "https://%s.s3.amazonaws.com/%s%s" % \
-			(S3_BUCKET,S3_BUCKET_UPLOAD_ROOT,wavFilepath)
+		s3WavURL = "https://%s.s3.amazonaws.com/%s" % \
+			(S3_BUCKET,s3WavFilepath)
 		transcriptUpload(txtFilepath)
 		audioDataUpload(wavFilepath,s3WavURL)
 
