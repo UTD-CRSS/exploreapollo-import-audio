@@ -16,6 +16,8 @@ def sToMs(s):
 
 def getFileLengthMs(filepath):
 	'''get the length of a wav file in ms'''
+	#note - builtin wave library is not sufficient because it is unable
+	#to handle certain wave formats.
 	res = subprocess.run(['ffmpeg','-i',filepath],stderr=subprocess.PIPE,
 		universal_newlines=True)
 	for line in res.stderr.split('\n'):
