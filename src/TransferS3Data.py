@@ -145,25 +145,25 @@ if __name__ == "__main__":
 	bucket = s3.Bucket(S3_BUCKET)
 
 	objcollection = {} #objcollection['filename_no_ext'] = (txtobj,wavobj)
-
+	
+	numobjs = 0
 	for obj in bucket.objects.all():
-		print(obj.key)
-		
 		name,ext = os.path.splitext(obj.key)
 		if name in objcollection and ext == '.txt':
 			objcollection[name][0] = obj
+			numobjs+=1
 		elif name in objcollection and ext == '.wav':
 			objcollection[name][1] = obj
+			numobjs+=1
 		elif ext == '.txt':
 			objcollection[name] = [obj,None]
 		elif ext == '.wav':
 			objcollection[name] = [None,obj]
 
 
-	print("Done looking through drump\n\n")
-
+	itemno = 1
 	for name, fileobjs in objcollection.items():
-		print(name)
+		print("%s (%d/%d)" % (name,itemno,numobjs))
 		txt, wav = fileobjs
 		
 		if txt is None or wav is None:
@@ -174,8 +174,8 @@ if __name__ == "__main__":
 		bucket.download_file(wav.key,'tmp.wav')
 		transcriptUpload('tmp.txt', mission, recorder, channel, fileMetStart)
 		audioDataUpload('tmp.wav',"https://%s.s3.amazonaws.com/%s" % \
-			(S3_BUCKET,wav.key), \
-			mission, recorder, channel, fileMetStart)
+			(S3_BUCKET,wav.key), mission, recorder, channel, fileMetStart)
+		itemno+=1
 
 		
 		
