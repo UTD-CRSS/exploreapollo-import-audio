@@ -47,6 +47,42 @@ def filenameToParams(filename):
 	return (mission,recorder,channel,metstart)
 
 
+_personIndex = None
+def getPerson(name):
+	'''get the ID of the referenced name
+	returns None if not found.'''
+	global _personIndex
+	if _personIndex is None:
+		response = requests.get("%s/api/people" % API_SERVER)
+		if response.ok:
+			_personIndex = {item['name']:item['id'] for item \
+				in response.json()}
+		else:
+			print("Failed to connect to API server.")
+			return None
+			
+	if name in _personIndex:
+		return _personIndex[name]
+	else:
+		_personIndex[name] = personUpload(name)
+		return _personIndex[name]
+
+
+def personUpload(name):
+	'''put a new dummy person in the API server, return ID'''
+	json = {
+		"name" : name,
+		"title" : "%s-dummy" % name,
+		"photo_url" : "exploreapollo.com",
+	}
+	response = requests.post("%s/api/people" % API_SERVER,
+		json=json,headers=HEADERS)
+	if response.ok:
+		return response.json()['id']
+	else:
+		return None
+
+
 
 def transcriptUpload(filepath,mission, recorder, channel, fileMetStart):
 	'''Parse and upload the transcript items to API server'''
@@ -58,13 +94,14 @@ def transcriptUpload(filepath,mission, recorder, channel, fileMetStart):
 			startMet = sToMs(lineToks[1]) + fileMetStart
 			endMet = sToMs(lineToks[3]) + startMet
 			text = lineToks[2]
-			speaker = lineToks[4]
-			##TODO - incomplete parameters (dummy person ID).
+			speaker = lineToks[4].strip('"')
+			personID = getPerson(speaker)
+
 			json = {
 				"text"      : text,
 				"met_start" : startMet,
 				"met_end"   : endMet,
-				"person_id" : 4,
+				"person_id" : personID,
 				"channel_id": channel,
 				}
 			response = requests.post("%s/api/transcript_items" % API_SERVER,

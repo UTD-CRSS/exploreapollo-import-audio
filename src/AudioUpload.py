@@ -51,14 +51,50 @@ def getFileLengthMs(filepath):
 _s3Client = None
 def s3Upload(filename,bucket,destfile):
 	'''Put a file in s3.'''
-	global _s3Client
-	if _s3Client is None:
-		_s3Client = boto3.client('s3',
-			aws_access_key_id=AWS_ACCESS_KEY,
-			aws_secret_access_key=AWS_SECRET_KEY,
-		)
-	_s3Client.upload_file(filename,bucket,destfile)
+	#~ global _s3Client
+	#~ if _s3Client is None:
+		#~ _s3Client = boto3.client('s3',
+			#~ aws_access_key_id=AWS_ACCESS_KEY,
+			#~ aws_secret_access_key=AWS_SECRET_KEY,
+		#~ )
+	#~ _s3Client.upload_file(filename,bucket,destfile)
 	print("S3 upload, %s -> %s" % (filename,destfile))
+
+
+_personIndex = None
+def getPerson(name):
+	'''get the ID of the referenced name
+	returns None if not found.'''
+	global _personIndex
+	if _personIndex is None:
+		response = requests.get("%s/api/people" % API_SERVER)
+		if response.ok:
+			_personIndex = {item['name']:item['id'] for item \
+				in response.json()}
+		else:
+			print("Failed to connect to API server.")
+			return None
+			
+	if name in _personIndex:
+		return _personIndex[name]
+	else:
+		_personIndex[name] = personUpload(name)
+		return _personIndex[name]
+
+
+def personUpload(name):
+	'''put a new dummy person in the API server, return ID'''
+	json = {
+		"name" : name,
+		"title" : "%s-dummy" % name,
+		"photo_url" : "exploreapollo.com",
+	}
+	response = requests.post("%s/api/people" % API_SERVER,
+		json=json,headers=HEADERS)
+	if response.ok:
+		return response.json()['id']
+	else:
+		return None
 
 
 def transcriptUpload(filepath):
@@ -73,13 +109,14 @@ def transcriptUpload(filepath):
 			startMet = sToMs(lineToks[1]) + fileMetStart
 			endMet = sToMs(lineToks[2]) + fileMetStart
 			text = lineToks[3]
-			speaker = lineToks[4]
-			##TODO - incomplete parameters (dummy person ID).
+			speaker = lineToks[4].strip('"')
+			personID = getPerson(speaker)
+				
 			json = {
 				"text"      : text,
 				"met_start" : startMet,
 				"met_end"   : endMet,
-				"person_id" : 4,
+				"person_id" : personID,
 				"channel_id": channel,
 				}
 			response = requests.post("%s/api/transcript_items" % API_SERVER,
