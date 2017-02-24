@@ -11,7 +11,7 @@ headers = {'content-type': 'application/json', 'Authorization': 'Token token="ex
 
 
 def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id, story_id):
-	'''
+	''' 
 		uploads a moment with momentTitle, momentDescription, met_start (int),
 		met_end(int), channel_id (int), story_id(int)
 		
@@ -62,6 +62,7 @@ with open('{0}.csv'.format(storyTitle), 'rb') as csvfile:
  
 	reader = csv.DictReader(csvfile)
 	useTitle = ''	#to save moment title 
+	useDescription = ''
 	usechannelID = 0	#assume all media comes from same channel in a given moment ****
 	met_start_args = []
 	met_end_args = []
@@ -69,12 +70,13 @@ with open('{0}.csv'.format(storyTitle), 'rb') as csvfile:
 		
 		if(moment['met_start'] == ''): #if we have a blank line, upload this moment
 			print useTitle, min(met_start_args), max(met_end_args), usechannelID
-			upload_moment(useTitle, useTitle, min(met_start_args), max(met_end_args), usechannelID, storyId)
+			upload_moment(useTitle, useDescription, min(met_start_args), max(met_end_args), usechannelID, storyId)
 			met_start_args = []
 			met_end_args = []
 			continue
 		
 		if(moment['Title'] != ''):	#if we're on the first line of a moment, save the title/channel ID 
+			useDescription = moment['Details']
 			useTitle = moment['Title']
 			usechannelID = int(moment['Transcript Files'].split('_')[2][2:]) #yikes
 		
