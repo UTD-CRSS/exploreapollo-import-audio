@@ -1,10 +1,40 @@
 import requests
 import os.path
 import subprocess
+import sys
 
 PEOPLE_API          = 'api/people'
 TRANSCRIPT_ITEM_API = 'api/transcript_items'
 AUDIO_SEGMENT_API   = 'api/audio_segments'
+
+#### Exceptions ####
+class APIFatalException(Exception):
+	def __init__(self,reason):
+		self.reason = reason
+	
+	def __str__(self):
+		return str(self.reason)
+
+class APIWarningException(Exception):
+	def __init__(self,reason):
+		self.reason = reason
+	
+	def __str__(self):
+		return str(self.reason)
+
+
+
+def _raiseUploadException(response,location):
+	'''raise the appropriate exception for an error code'''
+	if response.ok:
+		return
+	if response.status_code == 401:
+		raise APIFatalException(
+			"%s - 401 Authorization failed, check API server token" % \
+			location)
+	else:
+		raise APIWarningException("%s - %d %s" % (location,
+			response.status_code,response.text)) 
 
 
 def _constructURL(server,path):
@@ -25,13 +55,16 @@ def getPerson(name,server,token):
 	returns None if not found.'''
 	global _personIndex
 	if _personIndex is None:
-		response = requests.get(_constructURL(server,PEOPLE_API))
+		try:
+			response = requests.get(_constructURL(server,PEOPLE_API))
+		except requests.exceptions.ConnectionError:
+			raise APIFatalException("Failed to connect to server at %s" % server)
+		
 		if response.ok:
 			_personIndex = {item['name']:item['id'] for item \
 				in response.json()}
 		else:
-			print("Failed to connect to API server.")
-			return None
+			raise APIFatalException("Failed to collect existing person IDs")
 			
 	if name in _personIndex:
 		return _personIndex[name]
@@ -50,12 +83,16 @@ def personUpload(name,server,token):
 		"title" : "%s-dummy" % name,
 		"photo_url" : "exploreapollo.com",
 	}
-	response = requests.post(_constructURL(server,PEOPLE_API),
-		json=json,headers=headers)
+	try:
+		response = requests.post(_constructURL(server,PEOPLE_API),
+			json=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	
 	if response.ok:
 		return response.json()['id']
 	else:
-		return None
+		_raiseUploadException(response,"Person upload")
 
 
 def _sToMs(s):
@@ -104,7 +141,6 @@ def _inferFormat(f):
 	return -1
 
 
-
 def _parseTranscriptLine(line,lineFormat,fileMetStart,server,token):
 	'''infer the line format and return startMet, endMet, text, speaker
 	return None on error'''
@@ -127,7 +163,6 @@ def _parseTranscriptLine(line,lineFormat,fileMetStart,server,token):
 		return None
 	
 
-
 def transcriptUpload(filepath,channel,fileMetStart,server,token,
 		propName=None):
 	'''Parse and upload the transcript items to API server
@@ -143,33 +178,37 @@ def transcriptUpload(filepath,channel,fileMetStart,server,token,
 		lineFormat = _inferFormat(f)
 		f.seek(0)
 		for lineNo, line in enumerate(f):
-			items = _parseTranscriptLine(line,lineFormat,fileMetStart,
-				server,token)
-			if items is None and len(line.split('\t')) == 0:
-				continue
-			elif items is None:
-				pass
-				##TODO - log error.
-			else:
-				startMet, endMet, text, personID = items
+			try:
+				items = _parseTranscriptLine(line,lineFormat,fileMetStart,
+					server,token)
+				if items is None and len(line.split('\t')) == 0:
+					continue
+				elif items is None:
+					pass
+					##TODO - log error.
+				else:
+					startMet, endMet, text, personID = items
 
-			json = {
-				"text"      : text,
-				"met_start" : startMet,
-				"met_end"   : endMet,
-				"person_id" : personID,
-				"channel_id": channel,
-				}
-			response = requests.post(_constructURL(server,
-				TRANSCRIPT_ITEM_API),json=json,headers=headers)
-			if response.ok:  ###TODO - add error condition pertaining to token authentication
-				pass
-			else:
-				print("Failed transcript %s:%d\n\t%s\n\t%s %s %s" % \
-					(propName, lineNo+1, line, \
-					response.status_code, \
-					response.reason, \
-					response.text))
+				json = {
+					"text"      : text,
+					"met_start" : startMet,
+					"met_end"   : endMet,
+					"person_id" : personID,
+					"channel_id": channel,
+					}
+				response = requests.post(_constructURL(server,
+					TRANSCRIPT_ITEM_API),json=json,headers=headers)
+				if not response.ok:
+					_raiseUploadException(response, "Transcript item")
+			
+			except APIWarningException as e:
+				print("ERROR - Transcript item, %s:%d  %s" % (
+					propName,lineNo+1,e.reason),file=sys.stderr)
+			except requests.exceptions.ConnectionError:
+				raise APIFatalException("Failed to connect to server at %s" % \
+					server)
+			except APIFatalException as e:
+				raise e
 
 
 def audioDataUpload(filepath,s3URL,channel,fileMetStart,server,token):
@@ -185,11 +224,19 @@ def audioDataUpload(filepath,s3URL,channel,fileMetStart,server,token):
 		"met_end"    : fileMetEnd,
 		"channel_id" : channel,
 	}
-	response =requests.post(_constructURL(server,AUDIO_SEGMENT_API),
-		json=json,headers=headers)
-	if response.ok:
-		pass
-	else:
-		print("Failed audio segment %s\n\t%s %s %s" % \
-			(filepath, response.status_code, response.reason, \
-			response.text))
+	try:
+		response =requests.post(_constructURL(server,AUDIO_SEGMENT_API),
+			json=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	if not response.ok and response.status_code == 401:
+		raise APIFatalException(
+			"%s - 401 Authorization failed, check API server token" % \
+			location)
+	elif not response.ok:
+		print("ERROR - Audio segment, %s  %d %s" % (
+			s3URL,response.status_code,response.text),
+			file=sys.stderr) 
+
+
+
