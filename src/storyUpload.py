@@ -2,23 +2,22 @@ import sys
 import csv
 import requests 
 import json
+from config import *
 
-#global variables - turn these into params api entry 
-storyuploadurl = 'http://localhost:4060/api/stories'
-momentuploadurl = 'http://localhost:4060/api/moments'	
-headers = {'content-type': 'application/json', 'Authorization': 'Token token="exploreapollo"'}
+#global variables - headers
+headers = {'content-type': 'application/json', 'Authorization': "Token token=%s" % API_SERVER_TOKEN}
 
 
 
 def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id, story_id):
 	'''
 		uploads a moment with momentTitle, momentDescription, met_start (int),
-		met_end(int), channel_id (int), story_id(int)
-		
-		Need to add error handling (can tell by catching ValueError on response.json()) 
+		met_end(int), channel_id (int), story_id(int) 
 	'''
-	momentparams = {'title' : '', 'description' : '', 'met_start': 0, 'met_end' : 0, 'channel_ids' : [], 'story_ids' : []}
-
+	
+	momentuploadurl = "%s/api/moments" % API_SERVER
+	
+	
 	momentparams['title'] = momentTitle
 	momentparams['description'] = momentDescription
 	momentparams['met_start'] = met_start
@@ -36,10 +35,12 @@ def upload_story(storyTitle, storyDescription):
 		and empty moment_ids. Returns story_id so moments uploaded
 		later in script can use this to be associated with the story.
 	'''
-		
-	storyparams = {'title': '', 'description': '', 'moment_ids': []}	
+	
+	storyuploadurl = "%s/api/storiers" % API_SERVER
+			
 	storyparams['title'] = storyTitle
 	storyparams['description'] = storyDescription
+	storyparams['moment_ids'] = []
 	
 	response = requests.post(storyuploadurl, json=storyparams, headers=headers)
 	
@@ -54,32 +55,25 @@ def upload_story(storyTitle, storyDescription):
 
 #program begins here 
 storyTitle = sys.argv[1]
-storyId = upload_story(storyTitle, "placeholder") #upload story, get ID 
+storyDescription = "placeholder"
+storyId = upload_story(storyTitle, storyDescription) #upload story, get ID 
 
-print storyId
+print (storyId, storyTitle, storyDescription)
 
 with open('{0}.csv'.format(storyTitle), 'rb') as csvfile: 
  
-	lastTitle = '' #holds the last title read
-	i = 2
 	reader = csv.DictReader(csvfile)
 	for moment in reader:
-		useTitle = ''
-	
-		if(moment['met_start'] == ''): #if we have a blank line
-			continue
- 
-		if(moment['Title'] != ''):
-			lastTitle = moment['Title']
-			useTitle = moment['Title']
-			i = 2
-		else:
-			useTitle = '{0}_{1}'.format(lastTitle, i)
-			i = i + 1
+		channelID = int(moment['Transcript Files'].split('_')[2][2:])
+		if(check_params(moment['met_start'], moment['met_end'], channelID)){ #if we are good to upload 
+			print useTitle, moment['met_start'], moment['met_end'], channelID
+			upload_moment(moment['Title'], moment['Details'], moment['met_start'], moment['met_end'], channelID, storyId)
+		}
+		else{
+			print "Upload of %s moment failed."
+		}
 		
-		channelID = int(moment['Transcript Files'].split('_')[2][2:]) #yikes
-		print useTitle, moment['met_start'], moment['met_end'], channelID
-		upload_moment(useTitle, "placeholders description", moment['met_start'], moment['met_end'], channelID, storyId)
+		
 
 		
 
