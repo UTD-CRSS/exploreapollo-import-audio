@@ -1,0 +1,21 @@
+This project contains various scripts for uploading data and files.
+
+TransferS3Data.py - Finds transcript and wave files in S3 and puts
+audio segment and transcript items in the database.
+
+AudioUpload.py - Finds transcript and wave files on the local machine,
+uploads them to S3, and puts audio segment and transcript items in the
+database.
+
+To use, copy src/config-sample.py to src/config.py, and fill in the 
+dummy values.  
+To run,
+	python TransferS3Data.py
+	python AudioUpload.py <local base folder> <S3 base folder>
+
+AudioUpload uploads all wav and txt files found in the local base folder,
+and preserves the directory structure as much as possible.
+If the call looks like
+	python AudioUpload.py basefolder/ audio/
+then a file basefolder/subfolder/file.txt is uploaded as 
+audio/subfolder/file.txt in S3.
