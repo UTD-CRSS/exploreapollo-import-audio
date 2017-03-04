@@ -3,9 +3,11 @@ import os.path
 import subprocess
 import sys
 
+MISSION_API         = 'api/missions'
 PEOPLE_API          = 'api/people'
 TRANSCRIPT_ITEM_API = 'api/transcript_items'
 AUDIO_SEGMENT_API   = 'api/audio_segments'
+MEDIA_API           = 'api/media'
 
 #### Exceptions ####
 class APIFatalException(Exception):
@@ -47,6 +49,43 @@ def _constructURL(server,path):
 		return server + '/' + path
 	else:
 		return server + path
+
+
+def _extractNumber(strnum):
+	'''obtain the first integer found in strnum'''
+	stidx = 0
+	while stidx < len(strnum) and strnum[stidx] not in '0123456789':
+		stidx+=1
+	endidx = stidx
+	while endidx < len(strnum) and strnum[endidx] in '0123456789':
+		endidx+=1
+	if endidx>stidx:
+		return int(strnum[stidx:endidx])
+	else:
+		return None
+
+
+_missionIndex = None
+def getMission(name,server):
+	'''get the ID of the mission'''
+	global _missionIndex
+	if _missionIndex is None:
+		try:
+			response = requests.get(_constructURL(server,MISSION_API))
+		except requests.exceptions.ConnectionError:
+			raise APIFatalException("Failed to connect to server at %s" % server)
+		if response.ok:
+			_missionIndex = {_extractNumber(i['name']):i['id'] for \
+				i in response.json()}
+		else:
+			raise APIFatalException("Failed to collect existing mission IDs")
+	
+	missionNo = _extractNumber(name)
+	if missionNo in _missionIndex:
+		return _missionIndex[missionNo]
+	else:
+		raise APIWarningException("No matching mission found for %s" % name)
+		##TODO - mission upload, or user intervention.
 
 
 _personIndex = None
@@ -213,7 +252,7 @@ def transcriptUpload(filepath,channel,fileMetStart,server,token,
 
 def audioDataUpload(filepath,s3URL,channel,fileMetStart,server,token):
 	'''upload audio segment data to API server.  does NOT upload audio file'''
-	fileMetEnd   = fileMetStart + _getFileLengthMs(filepath)
+	fileMetEnd = fileMetStart + _getFileLengthMs(filepath)
 	headers = {'Authorization':"Token token=%s" % token,
 		'content-type':'application/json'}
 	
@@ -225,18 +264,46 @@ def audioDataUpload(filepath,s3URL,channel,fileMetStart,server,token):
 		"channel_id" : channel,
 	}
 	try:
-		response =requests.post(_constructURL(server,AUDIO_SEGMENT_API),
+		response = requests.post(_constructURL(server,AUDIO_SEGMENT_API),
 			json=json,headers=headers)
 	except requests.exceptions.ConnectionError:
 		raise APIFatalException("Failed to connect to server at %s" % server)
 	if not response.ok and response.status_code == 401:
 		raise APIFatalException(
-			"%s - 401 Authorization failed, check API server token" % \
-			location)
+			"Audio data - 401 Authorization failed, check API server token")
 	elif not response.ok:
 		print("ERROR - Audio segment, %s  %d %s" % (
 			s3URL,response.status_code,response.text),
 			file=sys.stderr) 
 
 
-
+def mediaDataUpload(url,title,mission,server,token,**kwargs):
+	'''upload media data.  Does NOT upload media itself
+	allowed kwargs - description,caption,alt_text,type'''
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+	
+	json = {
+		"url"        : url,
+		"title"      : title,
+		"mission_id" : mission, ###TODO - get mission ID
+	}
+	
+	if kwargs is not None:
+		for jhead, jval in  kwargs.items():
+			json[jhead] = jval
+	
+	try:
+		response = requests.post(_constructURL(server,MEDIA_API),
+			json=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	if not response.ok and response.status_code == 401:
+		raise APIFatalException(
+			"Media data - 401 Authorization failed, check API server token")
+	elif not response.ok:
+		print("ERROR - Media data, %s  %d %s" % (
+			url,response.status_code,response.text),
+			file=sys.stderr) 
+	
+	
