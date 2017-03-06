@@ -49,7 +49,10 @@ def upload_story(storyTitle, storyDescription):
 	return data["id"]
 
 
-
+def check_params(met_start, met_end, channelID):
+	'''
+		
+	''' 
 
 
 
