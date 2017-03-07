@@ -2,12 +2,15 @@ import requests
 import os.path
 import subprocess
 import sys
+import json
 
 MISSION_API         = 'api/missions'
 PEOPLE_API          = 'api/people'
 TRANSCRIPT_ITEM_API = 'api/transcript_items'
 AUDIO_SEGMENT_API   = 'api/audio_segments'
 MEDIA_API           = 'api/media'
+STORY_API			= 'api/stories'
+MOMENT_API			= 'api/moments'
 
 #### Exceptions ####
 class APIFatalException(Exception):
@@ -307,3 +310,68 @@ def mediaDataUpload(url,title,mission,server,token,**kwargs):
 			file=sys.stderr) 
 	
 	
+def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id, story_id, server, token):
+	'''
+		upload a moment
+	'''
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+
+	json = {
+		"title"			:	momentTitle,
+		"description"	:	momentDescription,
+		"met_start"		:	met_start,
+		"met_end"		:	met_end,
+		"channel_ids"	:	[channel_id],
+		"story_ids"		:	[story_id],  
+	}
+
+
+	#add data check here 
+
+	try:
+		response = requests.post(_constructURL(server,MOMENT_API),
+			json=json,headers=headers)
+		if not response.ok:
+			_raiseUploadException(response, "Moment")
+	except APIWarningException as e:
+		print("ERROR - Moment, %s  %s" % (momentTitle, e.reason),file=sys.stderr)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	except APIFatalException as e:
+		raise e
+
+def upload_story(storyTitle, storyDescription, server, token):
+	'''
+		uploads a story with storyTitle, storyDescription,
+		and empty moment_ids. Returns story_id so moments uploaded
+		later in script can use this to be associated with the story.
+
+		returns storyID = -1 if error uploading story 
+	'''
+
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+
+	json = {
+		"title"			:	storyTitle,
+		"description"	:	storyDescription,
+		"moment_ids"	:	[],
+	}
+
+	storyID = -1
+	try:
+		response = requests.post(_constructURL(server,STORY_API),
+			json=json,headers=headers)
+		if not response.ok:
+			_raiseUploadException(response, "Story")
+		else:
+			storyID = json.loads(response.txt)["id"]	
+	except APIWarningException as e:
+		print("ERROR - STORY, %s  %s" % (storyTitle, e.reason),file=sys.stderr)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	except APIFatalException as e:
+		raise e
+
+	return storyID
