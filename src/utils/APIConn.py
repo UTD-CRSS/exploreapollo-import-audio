@@ -11,6 +11,7 @@ AUDIO_SEGMENT_API   = 'api/audio_segments'
 MEDIA_API           = 'api/media'
 STORY_API			= 'api/stories'
 MOMENT_API			= 'api/moments'
+METRIC_API			= 'api/metrics'
 
 #### Exceptions ####
 class APIFatalException(Exception):
@@ -113,6 +114,71 @@ def getPerson(name,server,token):
 	else:
 		_personIndex[name] = personUpload(name,server,token)
 		return _personIndex[name]
+
+
+
+def getStory(title,server,token):
+	'''get the ID of the referenced story name
+	returns None if not found.'''
+	storyIndex = {}
+	
+	try:
+		response = requests.get(_constructURL(server,STORY_API))
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+		
+	if response.ok:
+		storyIndex = {item['title']:item['id'] for item \
+			in response.json()}
+	else:
+		raise APIFatalException("Failed to collect existing person IDs")
+			
+	if title in storyIndex:
+		return storyIndex[title] #return ID of story
+	else:
+		return None
+
+def getStory(title,server,token):
+	'''get the ID of the referenced story name
+	returns None if not found.'''
+	storyIndex = {}
+	
+	try:
+		response = requests.get(_constructURL(server,STORY_API))
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+		
+	if response.ok:
+		storyIndex = {item['title']:item['id'] for item \
+			in response.json()}
+	else:
+		raise APIFatalException("Failed to collect existing person IDs")
+			
+	if title in storyIndex:
+		return storyIndex[title] #return ID of story
+	else:
+		return None
+
+def getMoment(title,server,token):
+	'''get the ID of the referenced moment name
+	returns None if not found.'''
+	momentIndex = {}
+	
+	try:
+		response = requests.get(_constructURL(server,MOMENT_API))
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+		
+	if response.ok:
+		momentIndex = {item['title']:item['id'] for item \
+			in response.json()}
+	else:
+		raise APIFatalException("Failed to collect existing person IDs")
+			
+	if title in momentIndex:
+		return momentIndex[title] #return ID of story
+	else:
+		return None
 
 
 def personUpload(name,server,token):
@@ -327,8 +393,6 @@ def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id
 	}
 
 
-	#add data check here 
-
 	try:
 		response = requests.post(_constructURL(server,MOMENT_API),
 			json=json,headers=headers)
@@ -369,9 +433,44 @@ def upload_story(storyTitle, storyDescription, server, token):
 			storyID = json.loads(response.txt)["id"]	
 	except APIWarningException as e:
 		print("ERROR - STORY, %s  %s" % (storyTitle, e.reason),file=sys.stderr)
+		raise e
 	except requests.exceptions.ConnectionError:
 		raise APIFatalException("Failed to connect to server at %s" % server)
 	except APIFatalException as e:
 		raise e
 
 	return storyID
+
+
+def upload_metric(Type, met_start, met_end, channel_id, data, server,token):
+	'''
+		uploads a metric with type (string, currently not related to subclass of metric WordCount),
+		met_start, met_end, channelID, data (a dict containing unstructured data. cannot have nested
+		structures. one key -> one string)
+	'''
+
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+
+	json = {
+		"metric"	:{
+						"type"		: Type, 
+						"met_start"	: met_start,
+						"met_end"	: met_end,
+						"channel_id": channel_id,
+						"data"		: data,
+					  }
+	}
+
+
+	try:
+		response = requests.post(_constructURL(server,METRIC_API),
+			json=json,headers=headers)
+		if not response.ok:
+			_raiseUploadException(response, "Metric")
+	except APIWarningException as e:
+		print("ERROR - Metric, %s  %s" % (Type, e.reason),file=sys.stderr)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	except APIFatalException as e:
+		raise e

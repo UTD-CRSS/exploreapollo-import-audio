@@ -15,3 +15,21 @@ def filenameToParams(filename):
 	metstart = int(rmetstart)
 	
 	return (mission,recorder,channel,metstart)
+
+def list_to_json_string(origlist):
+	'''takes origlist and represents it in a string as a json list 
+
+	example: 
+		origlist = ['SPK2"', 'SPK4"', 'SPK1"', 'SPK1', 'SPK3"']
+
+		returns '['SPK2"', 'SPK4"', 'SPK1"', 'SPK1', 'SPK3"']'
+	'''
+
+	jsonListString = '['
+
+	for element in origlist[:-1]: 
+		jsonListString += '\'{0}\','.format(element)
+	jsonListString+= '\'{0}\']'.format(origlist[-1]) 
+
+
+	return jsonListString
