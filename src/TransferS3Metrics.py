@@ -25,7 +25,7 @@ for obj in bucket.objects.all(): # get all files in all folders? (graphical data
 itemno = 1
 for name, jsonobj in objcollection.items():
 	print("%s (%d/%d)" % (name,itemno,numobjs))
-
+	itemno+=1
 	bucket.download_file(jsonobj.key,'tmp.json')
 
 	if os.path.getsize('tmp.json') <= 0: #skip empty json files.. 
@@ -38,7 +38,7 @@ for name, jsonobj in objcollection.items():
 		tempData = ast.literal_eval(data_file.read().replace('array(', '"').replace(')', '"').replace('\n', '')) #ew
 	
 	print(tempData)	
-	itemno+=1
+	
 
 	#upload wordcounts
 	for i, wordCount in enumerate(tempData['word_count']): 
