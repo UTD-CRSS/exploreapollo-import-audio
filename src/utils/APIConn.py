@@ -277,6 +277,7 @@ def audioDataUpload(filepath,s3URL,channel,fileMetStart,server,token):
 			file=sys.stderr) 
 
 
+_AUDIO_ALLOWED_PARAMS=['description','caption','alt_text','type']
 def mediaDataUpload(url,title,mission,server,token,**kwargs):
 	'''upload media data.  Does NOT upload media itself
 	allowed kwargs - description,caption,alt_text,type'''
@@ -289,8 +290,8 @@ def mediaDataUpload(url,title,mission,server,token,**kwargs):
 		"mission_id" : mission, ###TODO - get mission ID
 	}
 	
-	if kwargs is not None:
-		for jhead, jval in  kwargs.items():
+	for jhead, jval in kwargs.items():
+		if jhead in _AUDIO_ALLOWED_PARAMS:
 			json[jhead] = jval
 	
 	try:

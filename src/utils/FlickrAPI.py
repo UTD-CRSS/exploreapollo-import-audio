@@ -15,7 +15,7 @@ def _flickrURL(photoDict):
 
 
 def getAlbumPhotoList(albumId,key):
-	'''obtain a list of (name,url) pairs for pictures in an album'''
+	'''obtain a list of (name,url,description) triple for pictures in an album'''
 	results = []
 	
 	params = {
@@ -23,6 +23,7 @@ def getAlbumPhotoList(albumId,key):
 		'method'      : 'flickr.photosets.getPhotos',
 		'api_key'     : key,
 		'photoset_id' : albumId,
+		'extras'      : 'description',
 	}
 	
 	response = requests.get(FLICKR_SERVICE,params=params)
@@ -39,7 +40,8 @@ def getAlbumPhotoList(albumId,key):
 	
 	numPages = j['photoset']['pages']
 	for photo in j['photoset']['photo']:
-		results.append((photo['title'],_flickrURL(photo)))
+		results.append((photo['title'],_flickrURL(photo),
+			photo['description']['_content']))
 	
 	#load data from any additional pages
 	for pageNo in range(2,numPages+1):
@@ -56,7 +58,8 @@ def getAlbumPhotoList(albumId,key):
 			break
 		
 		for photo in j['photoset']['photo']:
-			results.append((photo['title'],_flickrURL(photo)))
+			results.append((photo['title'],_flickrURL(photo),
+				photo['description']['_content']))
 		
 	return results
 		
