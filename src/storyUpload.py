@@ -22,58 +22,6 @@ from utils.APIConn import *
 #		print useTitle, moment['met_start'], moment['met_end'], channelID
 #		upload_moment(moment['Title'], moment['Details'], moment['met_start'], moment['met_end'], channelID, storyId, API_SERVER, API_SERVER_TOKEN)
 		
-		
-def checkStory(storyTitle):
-	'''
-		Simply checks to be sure there is no duplicate story already in the system
-		returns:
-			False - story title already in the system
-			True - story title not in the system
-	'''
-
-	storyID = getStory(storyTitle, API_SERVER, API_SERVER_TOKEN)
-
-	if(storyID is not None):
-		print ("ERROR: Story %s already exists (id %d)" % (storyTitle, storyID))
-		return False
-	else
-		return True
-
-
-def checkMoments(momentDict):
-	'''
-		Checks to be sure the moments to upload do not
-			- have the same name as a existing moment
-			- have no data associated with their (met_start, met_end) interval (audio/transcript)
-			- show warnings for other data not availabe (metrics/media)
-
-			Outputs:
-				goodToUpload - True if all moments do not have a name already existing, 
-							   and have some audio/transcript data associated with their MET times
-	'''
-
-
-	goodToUpload = True 
-
-
-	#check for existing moment names
-	for moment in momentDict:
-		momentID = getMoment(moment['Title']) 
-		if(momentID is not None):
-			print ("ERROR: Story %s already exists (id %d)" % (moment['Title'], momentID))
-			moment['canUpload'] = False
-			goodToUpload = False
-
-
-	#check for data (audio/transcript) associated with the (met_start, met_end) interval 
-	for moment in momentDict:
-		
-		
-	return goodToUpload
-
-
-
-
 
 
 #program begins here
