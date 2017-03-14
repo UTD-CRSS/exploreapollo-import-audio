@@ -8,6 +8,7 @@ PEOPLE_API          = 'api/people'
 TRANSCRIPT_ITEM_API = 'api/transcript_items'
 AUDIO_SEGMENT_API   = 'api/audio_segments'
 MEDIA_API           = 'api/media'
+MEDIA_ATTACH_API    = 'api/media_attachments'
 
 #### Exceptions ####
 class APIFatalException(Exception):
@@ -277,7 +278,7 @@ def audioDataUpload(filepath,s3URL,channel,fileMetStart,server,token):
 			file=sys.stderr) 
 
 
-_AUDIO_ALLOWED_PARAMS=['description','caption','alt_text','type']
+_MEDIA_ALLOWED_PARAMS=['description','caption','alt_text','type']
 def mediaDataUpload(url,title,mission,server,token,**kwargs):
 	'''upload media data.  Does NOT upload media itself
 	allowed kwargs - description,caption,alt_text,type'''
@@ -291,7 +292,7 @@ def mediaDataUpload(url,title,mission,server,token,**kwargs):
 	}
 	
 	for jhead, jval in kwargs.items():
-		if jhead in _AUDIO_ALLOWED_PARAMS:
+		if jhead in _MEDIA_ALLOWED_PARAMS:
 			json[jhead] = jval
 	
 	try:
@@ -307,4 +308,46 @@ def mediaDataUpload(url,title,mission,server,token,**kwargs):
 			url,response.status_code,response.text),
 			file=sys.stderr) 
 	
+
+_MATTACH_ALLOWED_PARAMS = set(['met_start','met_end'])
+def mediaAttachableUpload(mediaId,attachableType,attachableId,server,token,**kwargs):
+	'''Connect an existing media upload to a moment or channel.
+	IDs are IDs as represented in database
+	allowed kwargs are met_start, met_end'''
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
 	
+	json = {
+		"media_id"              : mediaId,
+		"media_attachable_type" : attachableType,
+		"media_attachable_id"   : attachableId,
+	}
+	
+	for jhead, jval in kwargs.items():
+		if jhead in _MATTACH_ALLOWED_PARAMS:
+			json[jhead] = jval
+	
+	try:
+		response = requests.post(_constructURL(server,MEDIA_ATTACH_API),
+			json=json, headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	if not response.ok and response.status_code == 401:
+		raise APIFatalException(
+			"Media data - 401 Authorization failed, check API server token")
+	elif not response.ok:
+		print("ERROR - Media data, %s  %d %s" % (
+			url,response.status_code,response.text),
+			file=sys.stderr) 
+
+
+
+
+
+
+
+
+
+
+
+
