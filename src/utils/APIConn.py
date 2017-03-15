@@ -6,8 +6,8 @@ import json
 
 MISSION_API         = 'api/missions'
 PEOPLE_API          = 'api/people'
-TRANSCRIPT_ITEM_API = 'api/transcript_items'
-AUDIO_SEGMENT_API   = 'api/audio_segments'
+TRANSCRIPT_ITEM_SEARCH_API = 'api/transcript_items/search'
+AUDIO_SEGMENT_SEARCH_API = 'api/audio_segments/search'
 MEDIA_API           = 'api/media'
 STORY_API			= 'api/stories'
 MOMENT_API			= 'api/moments'
@@ -115,8 +115,10 @@ def getPerson(name,server,token):
 		return _personIndex[name]
 
 def getStory(title,server,token):
-	'''get the ID of the referenced story name
-	returns None if not found.'''
+	'''
+		get the ID of the referenced story name
+		returns None if not found.
+	'''
 	storyIndex = {}
 	
 	try:
@@ -128,7 +130,7 @@ def getStory(title,server,token):
 		storyIndex = {item['title']:item['id'] for item \
 			in response.json()}
 	else:
-		raise APIFatalException("Failed to collect existing person IDs")
+		raise APIFatalException("Failed to collect existing story IDs")
 			
 	if title in storyIndex:
 		return storyIndex[title] #return ID of story
@@ -136,8 +138,11 @@ def getStory(title,server,token):
 		return None
 
 def getMoment(title,server,token):
-	'''get the ID of the referenced moment name
-	returns None if not found.'''
+	'''
+		get the ID of the referenced moment name
+		returns None if not found.
+	'''
+
 	momentIndex = {}
 	
 	try:
@@ -149,14 +154,63 @@ def getMoment(title,server,token):
 		momentIndex = {item['title']:item['id'] for item \
 			in response.json()}
 	else:
-		raise APIFatalException("Failed to collect existing person IDs")
+		raise APIFatalException("Failed to collect existing moment IDs")
 			
 	if title in momentIndex:
 		return momentIndex[title] #return ID of story
 	else:
 		return None
 
+def getTranscriptItems(met_start, met_end, server, token):
+	'''
+		get all Transcript items with met_start times from 
+		(met_start, met_end) 
+	'''
 
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+	
+	json = {
+		"met_start":	met_start,
+		"met_end"  :	met_end,
+	}
+
+	try:
+		response = requests.get(_constructURL(server, TRANSCRIPT_ITEM_SEARCH_API),
+			params=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+
+	if response.ok:
+		return response.json() 
+	else:
+		raise APIFatalException("Failed to collect existing transcript items")	
+
+def getAudioSegments(met_start, met_end, server, token):
+	'''
+		get all audio segement items with met_start times from
+		(met_start, met_end)
+	'''
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+	
+	json = {
+		"met_start":	met_start,
+		"met_end"  :	met_end,
+	}
+
+	try:
+		response = requests.get(_constructURL(server, AUDIO_SEGMENT_SEARCH_API),
+			params=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+
+	if response.ok:
+		return response.json() #test this- find list?
+	else:
+		print (response)
+		raise APIFatalException("Failed to collect existing audio segments")
+	
 
 
 def personUpload(name,server,token):

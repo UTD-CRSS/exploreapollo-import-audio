@@ -64,6 +64,7 @@ def checkMoments(momentDict):
 			print ("ERROR: Story %s already exists (id %d)" % (moment['Title'], momentID))
 			moment['canUpload'] = False
 			goodToUpload = False
+		audioData = 
 
 
 	#check for data (audio/transcript) associated with the (met_start, met_end) interval 
