@@ -206,7 +206,7 @@ def getAudioSegments(met_start, met_end, server, token):
 		raise APIFatalException("Failed to connect to server at %s" % server)
 
 	if response.ok:
-		return response.json() #test this- find list?
+		return response.json() 
 	else:
 		print (response)
 		raise APIFatalException("Failed to collect existing audio segments")
