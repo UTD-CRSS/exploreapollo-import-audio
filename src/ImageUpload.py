@@ -23,7 +23,7 @@ def s3Upload(f,bucket,destfile):
 
 if __name__ == "__main__":
 	if len(sys.argv) != 4:
-		print("Usage: %s <album id> <S3 folder> <Mission name>" % sys.argv[0])
+		print("Usage: %s <Flickr album id> <S3 folder> <Mission name>" % sys.argv[0])
 		print('Ex: %s 0001 photo "Apollo 11"')
 		quit()
 	
