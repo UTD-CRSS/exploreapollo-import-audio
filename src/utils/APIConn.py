@@ -9,6 +9,8 @@ TRANSCRIPT_ITEM_API = 'api/transcript_items'
 AUDIO_SEGMENT_API   = 'api/audio_segments'
 MEDIA_API           = 'api/media'
 MEDIA_ATTACH_API    = 'api/media_attachments'
+CHANNEL_API         = 'api/channels'
+MOMENT_API          = 'api/moments'
 
 #### Exceptions ####
 class APIFatalException(Exception):
@@ -88,6 +90,50 @@ def getMission(name,server):
 		raise APIWarningException("No matching mission found for %s" % name)
 		##TODO - mission upload, or user intervention.
 
+
+_channelIndex = None
+def getChannel(name,server):
+	'''get the ID of a channel
+	channel is uniquely identified by name'''
+	global _channelIndex
+	if _channelIndex is None:
+		try:
+			response = requests.get(_constructURL(server,CHANNEL_API))
+		except requests.exceptions.ConnectionError:
+			raise APIFatalException("Failed to connect to server at %s" % server)
+		if response.ok:
+			_channelIndex = {i['title']:i['id'] for i in response.json()}
+		else:
+			raise APIFatalException("Failed to collect existing channel IDs")
+	
+	if name in _channelIndex:
+		return _channelIndex[name]
+	else:
+		raise APIWarningException("No matching channel found for %s" % name)
+
+
+
+_momentIndex = None
+def getMoment(name,server):
+	'''get the ID of a moment
+	moments are uniquely identified by their title'''
+	global _momentIndex
+	if _momentIndex is None:
+		try:
+			response = requests.get(_constructURL(server,MOMENT_API))
+		except requests.exceptions.ConnectionError:
+			raise APIFatalException("Failed to connect to server at %s" % server)
+		if response.ok:
+			_momentIndex = {i['title']:i['id'] for i in response.json()}
+		else:
+			raise APIFatalException("Failed to collect existing moment IDs")
+	
+	if name in _momentIndex:
+		return _momentIndex[name]
+	else:
+		raise APIWarningException(
+			"No matching moment found with name %s % name")
+	
 
 _personIndex = None
 def getPerson(name,server,token):
@@ -288,7 +334,7 @@ def mediaDataUpload(url,title,mission,server,token,**kwargs):
 	json = {
 		"url"        : url,
 		"title"      : title,
-		"mission_id" : mission, ###TODO - get mission ID
+		"mission_id" : getMission(mission,server),
 	}
 	
 	for jhead, jval in kwargs.items():
@@ -307,16 +353,26 @@ def mediaDataUpload(url,title,mission,server,token,**kwargs):
 		print("ERROR - Media data, %s  %d %s" % (
 			url,response.status_code,response.text),
 			file=sys.stderr) 
+	else:
+		return response.json()['id']
 	
 
 _MATTACH_ALLOWED_PARAMS = set(['met_start','met_end'])
-def mediaAttachableUpload(mediaId,attachableType,attachableId,server,token,**kwargs):
+def mediaAttachableUpload(mediaId,attachableType,attachableName,
+		server,token,**kwargs):
 	'''Connect an existing media upload to a moment or channel.
 	IDs are IDs as represented in database
 	attachableType must be 'Channel' or 'Moment'
 	allowed kwargs are met_start, met_end'''
 	headers = {'Authorization':"Token token=%s" % token,
 		'content-type':'application/json'}
+	
+	if attachableType == 'Channel':
+		attachableId = getChannel(attachableName,server)
+	elif attachableType == 'Moment':
+		attachableId = getMoment(attachableName,server)
+	else:
+		raise APIWarningException("Unrecognized attachable type %s" % str(attachableType))
 	
 	json = {
 		"media_id"              : mediaId,
@@ -338,7 +394,7 @@ def mediaAttachableUpload(mediaId,attachableType,attachableId,server,token,**kwa
 			"Media data - 401 Authorization failed, check API server token")
 	elif not response.ok:
 		print("ERROR - Media data, %s  %d %s" % (
-			url,response.status_code,response.text),
+			mediaId,response.status_code,response.text),
 			file=sys.stderr) 
 
 
