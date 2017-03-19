@@ -313,6 +313,7 @@ _MATTACH_ALLOWED_PARAMS = set(['met_start','met_end'])
 def mediaAttachableUpload(mediaId,attachableType,attachableId,server,token,**kwargs):
 	'''Connect an existing media upload to a moment or channel.
 	IDs are IDs as represented in database
+	attachableType must be 'Channel' or 'Moment'
 	allowed kwargs are met_start, met_end'''
 	headers = {'Authorization':"Token token=%s" % token,
 		'content-type':'application/json'}
