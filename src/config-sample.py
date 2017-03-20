@@ -4,3 +4,6 @@ S3_BUCKET='exploreapollo-data'
 
 API_SERVER='http://localhost:4060'
 API_SERVER_TOKEN='exploreapollo'
+
+#necessary only if getting images from Flikr.
+FLICKR_ACCESS_KEY='XXXX'
