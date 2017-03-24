@@ -97,7 +97,7 @@ if(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we'
 		print("ERROR: No existing story with name %s, but story upload failed. Exiting..." % (storyTitle))
 	else: 
 		for title, moment in momentDict.items():
-			channelID = #halp
+			channelID = int(moment['Transcript Files'].split('_')[2][2:])
 			upload_moment(moment['Title'], moment['Details'], moment['met_start'], moment['met_end'], channelID, storyID, API_SERVER, API_SERVER_TOKEN)
 
 
