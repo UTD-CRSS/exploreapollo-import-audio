@@ -2,15 +2,17 @@ import requests
 import os.path
 import subprocess
 import sys
+import json
 
 MISSION_API         = 'api/missions'
 PEOPLE_API          = 'api/people'
-TRANSCRIPT_ITEM_API = 'api/transcript_items'
-AUDIO_SEGMENT_API   = 'api/audio_segments'
+TRANSCRIPT_ITEM_SEARCH_API = 'api/transcript_items/search'
+AUDIO_SEGMENT_SEARCH_API = 'api/audio_segments/search'
 MEDIA_API           = 'api/media'
+STORY_API			      = 'api/stories'
+MOMENT_API			    = 'api/moments'
 MEDIA_ATTACH_API    = 'api/media_attachments'
 CHANNEL_API         = 'api/channels'
-MOMENT_API          = 'api/moments'
 
 #### Exceptions ####
 class APIFatalException(Exception):
@@ -157,6 +159,104 @@ def getPerson(name,server,token):
 	else:
 		_personIndex[name] = personUpload(name,server,token)
 		return _personIndex[name]
+
+def getStory(title,server,token):
+	'''
+		get the ID of the referenced story name
+		returns None if not found.
+	'''
+	storyIndex = {}
+	
+	try:
+		response = requests.get(_constructURL(server,STORY_API))
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+		
+	if response.ok:
+		storyIndex = {item['title']:item['id'] for item \
+			in response.json()}
+	else:
+		raise APIFatalException("Failed to collect existing story IDs")
+			
+	if title in storyIndex:
+		return storyIndex[title] #return ID of story
+	else:
+		return None
+
+def getMoment(title,server,token):
+	'''
+		get the ID of the referenced moment name
+		returns None if not found.
+	'''
+
+	momentIndex = {}
+	
+	try:
+		response = requests.get(_constructURL(server,MOMENT_API))
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+		
+	if response.ok:
+		momentIndex = {item['title']:item['id'] for item \
+			in response.json()}
+	else:
+		raise APIFatalException("Failed to collect existing moment IDs")
+			
+	if title in momentIndex:
+		return momentIndex[title] #return ID of story
+	else:
+		return None
+
+def getTranscriptItems(met_start, met_end, server, token):
+	'''
+		get all Transcript items with met_start times from 
+		(met_start, met_end) 
+	'''
+
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+	
+	json = {
+		"met_start":	met_start,
+		"met_end"  :	met_end,
+	}
+
+	try:
+		response = requests.get(_constructURL(server, TRANSCRIPT_ITEM_SEARCH_API),
+			params=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+
+	if response.ok:
+		return response.json() 
+	else:
+		raise APIFatalException("Failed to collect existing transcript items")	
+
+def getAudioSegments(met_start, met_end, server, token):
+	'''
+		get all audio segement items with met_start times from
+		(met_start, met_end)
+	'''
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+	
+	json = {
+		"met_start":	met_start,
+		"met_end"  :	met_end,
+	}
+
+	try:
+		response = requests.get(_constructURL(server, AUDIO_SEGMENT_SEARCH_API),
+			params=json,headers=headers)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+
+	if response.ok:
+		return response.json() 
+	else:
+		print (response)
+		raise APIFatalException("Failed to collect existing audio segments")
+	
 
 
 def personUpload(name,server,token):
@@ -379,7 +479,8 @@ def mediaAttachableUpload(mediaId,attachableType,attachableName,
 		"media_attachable_type" : attachableType,
 		"media_attachable_id"   : attachableId,
 	}
-	
+  
+  
 	for jhead, jval in kwargs.items():
 		if jhead in _MATTACH_ALLOWED_PARAMS:
 			json[jhead] = jval
@@ -397,14 +498,68 @@ def mediaAttachableUpload(mediaId,attachableType,attachableName,
 			mediaId,response.status_code,response.text),
 			file=sys.stderr) 
 
+def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id, story_id, server, token):
+	'''
+		upload a moment
+	'''
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
+
+	json = {
+		"title"			:	momentTitle,
+		"description"	:	momentDescription,
+		"met_start"		:	met_start,
+		"met_end"		:	met_end,
+		"channel_ids"	:	[channel_id],
+		"story_ids"		:	[story_id],  
+	}
 
 
+	#add data check here 
 
+	try:
+		response = requests.post(_constructURL(server,MOMENT_API),
+			json=json,headers=headers)
+		if not response.ok:
+			_raiseUploadException(response, "Moment")
+	except APIWarningException as e:
+		print("ERROR - Moment, %s  %s" % (momentTitle, e.reason),file=sys.stderr)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	except APIFatalException as e:
+		raise e
 
+def upload_story(storyTitle, storyDescription, server, token):
+	'''
+		uploads a story with storyTitle, storyDescription,
+		and empty moment_ids. Returns story_id so moments uploaded
+		later in script can use this to be associated with the story.
 
+		returns storyID = -1 if error uploading story 
+	'''
 
+	headers = {'Authorization':"Token token=%s" % token,
+		'content-type':'application/json'}
 
+	json = {
+		"title"			:	storyTitle,
+		"description"	:	storyDescription,
+		"moment_ids"	:	[],
+	}
 
+	storyID = -1
+	try:
+		response = requests.post(_constructURL(server,STORY_API),
+			json=json,headers=headers)
+		if not response.ok:
+			_raiseUploadException(response, "Story")
+		else:
+			storyID = json.loads(response.txt)["id"]	
+	except APIWarningException as e:
+		print("ERROR - STORY, %s  %s" % (storyTitle, e.reason),file=sys.stderr)
+	except requests.exceptions.ConnectionError:
+		raise APIFatalException("Failed to connect to server at %s" % server)
+	except APIFatalException as e:
+		raise e
 
-
-
+	return storyID	

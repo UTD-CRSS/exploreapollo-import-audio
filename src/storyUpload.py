@@ -3,79 +3,123 @@ import csv
 import requests 
 import json
 from config import *
-
-#global variables - headers
-headers = {'content-type': 'application/json', 'Authorization': "Token token=%s" % API_SERVER_TOKEN}
-
-
-
-def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id, story_id):
-	'''
-		uploads a moment with momentTitle, momentDescription, met_start (int),
-		met_end(int), channel_id (int), story_id(int) 
-	'''
-	
-	momentuploadurl = "%s/api/moments" % API_SERVER
-	
-	
-	momentparams['title'] = momentTitle
-	momentparams['description'] = momentDescription
-	momentparams['met_start'] = met_start
-	momentparams['met_end'] = met_end
-	momentparams['channel_ids'].append(channel_id)
-	momentparams['story_ids'].append(story_id)
-	
-	response = requests.post(momentuploadurl, json=momentparams, headers=headers)
-	
-	
-
-def upload_story(storyTitle, storyDescription):
-	'''
-		uploads a story with storyTitle, storyDescription,
-		and empty moment_ids. Returns story_id so moments uploaded
-		later in script can use this to be associated with the story.
-	'''
-	
-	storyuploadurl = "%s/api/storiers" % API_SERVER
-			
-	storyparams['title'] = storyTitle
-	storyparams['description'] = storyDescription
-	storyparams['moment_ids'] = []
-	
-	response = requests.post(storyuploadurl, json=storyparams, headers=headers)
-	
-	data = json.loads(response.text)
-	
-	return data["id"]
-
-
-def check_params(met_start, met_end, channelID):
-	'''
+from utils.APIConn import *
 		
-	''' 
+		
+def checkStory(storyTitle):
+	'''
+		Simply checks to be sure there is no duplicate story already in the system
+		returns:
+			False - story title already in the system
+			True - story title not in the system
+	'''
+
+	storyID = getStory(storyTitle, API_SERVER, API_SERVER_TOKEN)
+
+	if(storyID is not None):
+		print ("ERROR: Story %s already exists (id %d)" % (storyTitle, storyID))
+		return False
+	else:
+		return True
 
 
+def checkMoments(momentDict):
+	'''
+		Checks to be sure the moments to upload do not
+			- have the same name as a existing moment
+			- have no data associated with their (met_start, met_end) interval (audio/transcript)
+			- show warnings for other data not availabe (metrics/media)
 
-#program begins here 
+			Outputs:
+				goodToUpload - True if all moments do not have a name already existing, 
+							   and have some audio/transcript data associated with their MET times
+	'''
+
+
+	goodToUpload = True 
+
+	#check for data (audio/transcript) associated with the (met_start, met_end) interval, duplicate names 
+	for title, moment in momentDict.items():
+		print ("Checking moment %s..." % (title))
+
+		audioList = getAudioSegments(moment['met_start'], moment['met_end'], API_SERVER, API_SERVER_TOKEN)
+		transcriptList = getTranscriptItems(moment['met_start'], moment['met_end'], API_SERVER, API_SERVER_TOKEN)
+		momentID = getMoment(moment['Title'], API_SERVER, API_SERVER_TOKEN) 
+		
+
+		if(momentID is not None): #if there is already a moment with this title, don't allow upload
+			print ("ERROR: Moment %s already exists (id %d)" % (moment['Title'], momentID))
+			moment['canUpload'] = False
+			goodToUpload = False
+
+		if not audioList: #if there are no audio segments for this time interval, don't allow upload 
+			print ("ERROR: Moment %s has no audio data associated with its (met_start, met_end): (%d, %d)" % (moment['Title'], int(moment['met_start']), int(moment['met_end'])))
+			moment['canUpload'] = False
+			goodToUpload = False
+
+		if not transcriptList: #if there are no transcript items for this time interval, don't allow upload	
+			print ("ERROR: Moment %s has no transcript data associated with its (met_start, met_end): (%d, %d)" % (moment['Title'], int(moment['met_start']), int(moment['met_end'])))
+			moment['canUpload'] = False
+			goodToUpload = False
+
+
+	return goodToUpload
+
+
+		
+#program begins here
 storyTitle = sys.argv[1]
-storyDescription = "placeholder"
-storyId = upload_story(storyTitle, storyDescription) #upload story, get ID 
+storyDescription = None
+storyID = -1
 
-print (storyId, storyTitle, storyDescription)
+momentDict = {} #list of dictionary items describing each momment 
 
-with open('{0}.csv'.format(storyTitle), 'rb') as csvfile: 
+with open('{0}.csv'.format(storyTitle), 'r') as csvfile: 
  
 	reader = csv.DictReader(csvfile)
 	for moment in reader:
-		channelID = int(moment['Transcript Files'].split('_')[2][2:])
-		if(check_params(moment['met_start'], moment['met_end'], channelID)){ #if we are good to upload 
-			print useTitle, moment['met_start'], moment['met_end'], channelID
-			upload_moment(moment['Title'], moment['Details'], moment['met_start'], moment['met_end'], channelID, storyId)
-		}
-		else{
-			print "Upload of %s moment failed."
-		}
-		
+		if(moment['Title'] == ''): #skip blank lines
+			continue
+
+		if(moment['Title'] == 'Description' or moment['Title'] == 'description'): #if its the row with the STORY description
+			storyDescription = moment['Details']
+		else:
+			moment['canUpload'] = True	#assume we can upload it at first -- add dictionary field 
+			momentDict[moment['Title']] = moment 
+			  
+
+
+if(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we're clear to upload
+	#upload story first, get its ID
+	storyID =  upload_story(storyTitle, storyDescription)
+
+	if(storyID == -1):	#if storyUpload fails
+		print("ERROR: No existing story with name %s, but story upload failed. Exiting..." % (storyTitle))
+	else: 
+		for title, moment in momentDict.items():
+			channelID = int(moment['Transcript Files'].split('_')[2][2:])
+			upload_moment(moment['Title'], moment['Details'], moment['met_start'], moment['met_end'], channelID, storyID, API_SERVER, API_SERVER_TOKEN)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			
+
+
+
+
 		
 
 		
