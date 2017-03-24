@@ -45,9 +45,8 @@ def checkMoments(momentDict):
 		audioList = getAudioSegments(moment['met_start'], moment['met_end'], API_SERVER, API_SERVER_TOKEN)
 		transcriptList = getTranscriptItems(moment['met_start'], moment['met_end'], API_SERVER, API_SERVER_TOKEN)
 		momentID = getMoment(moment['Title'], API_SERVER, API_SERVER_TOKEN) 
-		
-
-		if(momentID is not None): #if there is already a moment with this title, don't allow upload
+    
+    if(momentID is not None): #if there is already a moment with this title, don't allow upload
 			print ("ERROR: Moment %s already exists (id %d)" % (moment['Title'], momentID))
 			moment['canUpload'] = False
 			goodToUpload = False
@@ -64,15 +63,14 @@ def checkMoments(momentDict):
 
 
 	return goodToUpload
-
-
 		
+
 #program begins here
-storyTitle = sys.argv[1]
+storyTitle = sys.argv[1] 
 storyDescription = None
 storyID = -1
 
-momentDict = {} #list of dictionary items describing each momment 
+momentDict = {} #list of dictionary items describing each moment. Holds all fields in excel file + "canUpload"
 
 with open('{0}.csv'.format(storyTitle), 'r') as csvfile: 
  
@@ -85,9 +83,8 @@ with open('{0}.csv'.format(storyTitle), 'r') as csvfile:
 			storyDescription = moment['Details']
 		else:
 			moment['canUpload'] = True	#assume we can upload it at first -- add dictionary field 
-			momentDict[moment['Title']] = moment 
+			momentDict[moment['Title']] = moment
 			  
-
 
 if(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we're clear to upload
 	#upload story first, get its ID
@@ -99,32 +96,6 @@ if(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we'
 		for title, moment in momentDict.items():
 			channelID = int(moment['Transcript Files'].split('_')[2][2:])
 			upload_moment(moment['Title'], moment['Details'], moment['met_start'], moment['met_end'], channelID, storyID, API_SERVER, API_SERVER_TOKEN)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			
-
-
-
-
-		
-
-		
-
-	
-	
-
-
+      
+      
+      
