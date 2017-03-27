@@ -565,7 +565,7 @@ def upload_story(storyTitle, storyDescription, server, token):
 	except APIFatalException as e:
 		raise e
     
-  return storyID
+	return storyID
 
 def upload_metric(Type, met_start, met_end, channel_id, data, server,token):
 	'''
