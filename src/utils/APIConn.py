@@ -6,6 +6,8 @@ import json
 
 MISSION_API         = 'api/missions'
 PEOPLE_API          = 'api/people'
+AUDIO_SEGMENT_API   = 'api/audio_segments'
+TRANSCRIPT_ITEM_API = 'api/transcript_items'
 TRANSCRIPT_ITEM_SEARCH_API = 'api/transcript_items/search'
 AUDIO_SEGMENT_SEARCH_API = 'api/audio_segments/search'
 MEDIA_API           = 'api/media'

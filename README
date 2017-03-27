@@ -1,7 +1,12 @@
 This project contains various scripts for uploading data and files.
 
 TransferS3Data.py - Finds transcript and wave files in S3 and puts
-audio segment and transcript items in the database.
+audio segment and transcript items in the database.  TransferS3Data
+takes three optional arguments - channel, met_min, and met_max.
+Providing these arguments limits the processed files to those referring
+to the given channel, and labeled as starting sometime between met_min
+and met_max.  Note that this will skip any files with data between 
+met_min and met_max, but begin before met_min!
 
 AudioUpload.py - Finds transcript and wave files on the local machine,
 uploads them to S3, and puts audio segment and transcript items in the
