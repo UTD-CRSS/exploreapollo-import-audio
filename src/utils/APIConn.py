@@ -2,7 +2,6 @@ import requests
 import os.path
 import subprocess
 import sys
-import json
 
 MISSION_API         = 'api/missions'
 PEOPLE_API          = 'api/people'
@@ -558,7 +557,7 @@ def upload_story(storyTitle, storyDescription, server, token):
 		if not response.ok:
 			_raiseUploadException(response, "Story")
 		else:
-			storyID = json.loads(response.txt)["id"]	
+			storyID = response.json()["id"]	
 	except APIWarningException as e:
 		print("ERROR - STORY, %s  %s" % (storyTitle, e.reason),file=sys.stderr)
 		raise e

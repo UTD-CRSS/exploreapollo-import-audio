@@ -88,7 +88,7 @@ with open('{0}.csv'.format(storyTitle), 'r') as csvfile:
 
 if(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we're clear to upload
 	#upload story first, get its ID
-	storyID =  upload_story(storyTitle, storyDescription)
+	storyID =  upload_story(storyTitle, storyDescription,API_SERVER,API_SERVER_TOKEN)
 
 	if(storyID == -1):	#if storyUpload fails
 		print("ERROR: No existing story with name %s, but story upload failed. Exiting..." % (storyTitle))
