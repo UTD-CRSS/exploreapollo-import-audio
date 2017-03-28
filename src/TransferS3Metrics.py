@@ -9,6 +9,17 @@ import ast
 
 
 
+if len(sys.argv) == 1:
+		target_channel = met_min = met_max = None
+elif len(sys.argv) == 4:
+	target_channel   = int(sys.argv[1])
+	met_min = int(sys.argv[2])
+	met_max   = int(sys.argv[3])
+else:
+	print("Usage: %s [channel met_min met_max]" % sys.argv[0])
+	quit()
+
+
 s3 = boto3.session.Session(aws_access_key_id=AWS_ACCESS_KEY,
 		aws_secret_access_key=AWS_SECRET_KEY).resource('s3')
 bucket = s3.Bucket(S3_BUCKET)
@@ -24,14 +35,20 @@ for obj in bucket.objects.all(): # get all files in all folders? (graphical data
 
 itemno = 1
 for name, jsonobj in objcollection.items():
+	
+	mission, recorder, channel, fileMetStart = filenameToParams(jsonobj.key) #need channel, fileMetStart (ms)
+
+	if met_max is not None and (fileMetStart > met_max or fileMetStart < met_min or channel != target_channel):
+		continue
+
 	print("%s (%d/%d)" % (name,itemno,numobjs))
 	itemno+=1
-	bucket.download_file(jsonobj.key,'tmp.json')
 
+	bucket.download_file(jsonobj.key,'tmp.json')
 	if os.path.getsize('tmp.json') <= 0: #skip empty json files.. 
 		continue
 
-	mission, recorder, channel, fileMetStart = filenameToParams(jsonobj.key) #need channel, fileMetStart (ms)
+	
 
 	with open('tmp.json') as data_file:   
 		#print (data_file.read())
