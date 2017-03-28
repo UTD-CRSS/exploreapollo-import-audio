@@ -1,5 +1,13 @@
 media_title,attachable_type,attachable_title,met_start,met_end
-AS11-36-5291,Moment,Alarm,735936000,736000000
-AS11-36-5298,Channel,CAPCOM,,
-AS11-36-5299,Moment,Alarm,,
-AS11-36-5300,Channel,PAO,4161000,416300
+AS11-40-5900,Moment,Landing Sequence,694923000,695000000
+AS11-40-5901,Moment,Landing Sequence,695000000,695500000
+AS11-40-5902,Moment,Landing Sequence,695500000,696000000
+AS11-40-5903,Moment,Landing Sequence,696000000,696100000
+AS11-40-5904,Moment,Landing Sequence,696100000,696200000
+AS11-40-5905,Moment,Landing Sequence,696200000,696720000
+AS11-40-5906,Moment,Splashdown,,
+AS11-40-5907,Moment,Splashdown,,
+AS11-40-5908,Moment,Splashdown,,
+AS11-40-5909,Moment,Splashdown,,
+AS11-40-5910,Moment,Splashdown,,
+AS11-40-5911,Moment,Splashdown,,
