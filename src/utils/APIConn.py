@@ -187,29 +187,6 @@ def getStory(title,server,token):
 	else:
 		return None
 
-def getMoment(title,server,token):
-	'''
-		get the ID of the referenced moment name
-		returns None if not found.
-	'''
-
-	momentIndex = {}
-	
-	try:
-		response = requests.get(_constructURL(server,MOMENT_API))
-	except requests.exceptions.ConnectionError:
-		raise APIFatalException("Failed to connect to server at %s" % server)
-		
-	if response.ok:
-		momentIndex = {item['title']:item['id'] for item \
-			in response.json()}
-	else:
-		raise APIFatalException("Failed to collect existing moment IDs")
-			
-	if title in momentIndex:
-		return momentIndex[title] #return ID of story
-	else:
-		return None
 
 def getTranscriptItems(met_start, met_end, server, token):
 	'''
