@@ -8,6 +8,13 @@ to the given channel, and labeled as starting sometime between met_min
 and met_max.  Note that this will skip any files with data between 
 met_min and met_max, but begin before met_min!
 
+TransferS3Metrics.py - Finds .json files in S3 and puts Metric items in
+the database. TransferS3Metrics takes three optional arguments - channel,
+met_min, and met_max. Providing these arguments limits the processed files to those referring
+to the given channel, and labeled as starting sometime between met_min
+and met_max.  Note that this will skip any files with data between 
+met_min and met_max, but begin before met_min!
+
 AudioUpload.py - Finds transcript and wave files on the local machine,
 uploads them to S3, and puts audio segment and transcript items in the
 database.
@@ -15,12 +22,24 @@ database.
 ImageUpload.py - Copies a Flickr album over to S3 and fills in database 
 information.
 
+storyUpload.py - Takes a csv file (check out template in examples/Splashdown.csv) and 
+uploads corresponding moments & story. The story name is the name of the .csv file
+(Splashdown.csv -> "Splashdown" story). The moments are listed as rows, and there is one
+row used for the description of the story itself. You can have empty rows to separate
+the moments for readability. The script will not upload the story and the moments
+unless each moment has audio/transcript data somewhere in its (met_start,met_end) interval. 
+Make sure that the .csv file is in the same directory as the storyUpload.py file. So to run
+the Splashdown example first you would have to 'cp examples/Splashdown.csv Splashdown.csv' 
+then 'python3 storyUpload.py Splashdown' 
+
 To use, copy src/config-sample.py to src/config.py, and fill in the 
 dummy values.  
 To run,
-	python TransferS3Data.py
+	python TransferS3Data.py 
+	python TransferS3Metrics.py 
 	python AudioUpload.py <local base folder> <S3 base folder>
 	python ImageUpload.py <Flickr album id> <S3 folder> <Mission name>
+	python storyUpload.py <.csv file with extension>
 
 AudioUpload uploads all wav and txt files found in the local base folder,
 and preserves the directory structure as much as possible.
