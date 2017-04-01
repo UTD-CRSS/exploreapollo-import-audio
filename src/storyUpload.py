@@ -44,7 +44,11 @@ def checkMoments(momentDict):
 
 		audioList = getAudioSegments(moment['met_start'], moment['met_end'], API_SERVER, API_SERVER_TOKEN)
 		transcriptList = getTranscriptItems(moment['met_start'], moment['met_end'], API_SERVER, API_SERVER_TOKEN)
-		momentID = getMoment(moment['Title'], API_SERVER)
+		
+		try:
+			momentID = getMoment(moment['Title'], API_SERVER)
+		except APIWarningException:
+			momentID = None
 
 		if(momentID is not None): 
 			print ("ERROR: Moment %s already exists (id %d)" % (moment['Title'], momentID))
