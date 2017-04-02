@@ -21,24 +21,103 @@ def s3Upload(f,bucket,destfile):
 	_s3Client.upload_fileobj(f,bucket,destfile)
 
 
+
+_CSV_REQUIRED_FIELDS = ['media_title','attachable_type',
+	'attachable_title','met_start','met_end']
+
+
 def getAttachablesFromFile(filename):
+	'''parse the csv to obtain all the needed values.
+	Enforces strict validation, a single error will
+	stop all the file processing.'''
 	res = {}
 	with open(filename,'r') as f:
-		for row in csv.DictReader(f):
-			mediaTitle = row['media_title']
+		reader = csv.DictReader(f)
+		
+		#check that necessary fields are contained
+		precheckPass = True
+		fieldsInFile = set(reader.fieldnames)
+		for req in _CSV_REQUIRED_FIELDS:
+			if req not in fieldsInFile:
+				print("CSV: Required column %s missing in CSV file." % req)
+				precheckPass = False
+				
+		if not precheckPass:
+			return None
+		
+		error = False
+		
+		for lineNo, row in enumerate(reader):
+			if len(row) == 0:
+				continue
+			
+			for i in row:
+				if row[i] is None:
+					row[i] = ''
+			
+			#validate row
+			rowValid = True
+			mediaTitle = row['media_title'].strip()
+			attachableType = row['attachable_type'].strip()
+			attachableTitle = row['attachable_title'].strip()
+			
+			if mediaTitle == '':
+				rowValid = False
+				print("CSV: Empty media_title field found in line %d" % (lineNo+1))
+			if attachableType != 'Channel' and attachableType != 'Moment':
+				rowValid = False
+				print("CSV: attachable_type must be either Channel or Moment, line %d" % (lineNo+1))
+			if attachableTitle == '':
+				rowValid = False
+				print("CSV: Empty attachable_title field found in line %d" % (lineNo+1))
+			
+			if row['met_start'].strip() == '':
+				metStart = None
+			else:
+				try:
+					metStart = int(row['met_start'])
+				except ValueError:
+					rowValid = False
+					print("CSV: Given met_start on line %d is not a number" % (lineNo+1))
+			if row['met_end'].strip() == '':
+				metEnd = None
+			else:
+				try:
+					metEnd = int(row['met_end'])
+				except ValueError:
+					rowValid = False
+					print("CSV: Given met_end on line %d is not a number" % (lineNo+1))
+			
+			if metEnd is not None and metStart is not None:
+				if metStart < 0:
+					rowValid = False
+					print("CSV: met_start on line %d is less than zero" % (lineNo+1))
+				if metEnd < metStart:
+					rowValid = False
+					print("CSV: met_end is less than met_start on row %d" % (lineNo+1))
+			elif metEnd is not None or metStart is not None:
+				rowValid = False
+				print("CSV: Either only met_start or met_end provided, must provide both or none, line %d" % (lineNo+1))
+			
+			if not rowValid:
+				error = True
+				continue
+			
+			#add row to results.
 			if mediaTitle not in res:
 				res[mediaTitle] = []
 			
-			try:
-				res[mediaTitle].append((row['attachable_type'],
-					row['attachable_title'],
-					int(row['met_start']),int(row['met_end'])))
-			except ValueError:
-				res[mediaTitle].append((row['attachable_type'],
-					row['attachable_title'],
-					None,None))
+			if metStart is not None:
+				res[mediaTitle].append((attachableType,
+					attachableTitle,metStart,metEnd))
+			else:
+				res[mediaTitle].append((attachableType,
+					attachableTitle,metStart,metEnd))
 	
-	return res
+	if not error:
+		return res
+	else:
+		return None
 
 
 
@@ -54,6 +133,10 @@ if __name__ == "__main__":
 	
 	if len(sys.argv) == 5:
 		attachables = getAttachablesFromFile(sys.argv[4])
+		if attachables is None:
+			print("Please correct errors in %s then rerun the program." % sys.argv[4])
+			print("No images or meida associations have been uploaded.")
+			quit()
 	else:
 		attachables = {}
 	
