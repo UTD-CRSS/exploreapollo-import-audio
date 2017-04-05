@@ -135,12 +135,56 @@ if __name__ == "__main__":
 		attachables = getAttachablesFromFile(sys.argv[4])
 		if attachables is None:
 			print("Please correct errors in %s then rerun the program." % sys.argv[4])
-			print("No images or meida associations have been uploaded.")
+			print("No images or media associations have been uploaded.")
 			quit()
 	else:
 		attachables = {}
 	
-	for name,url,desc in flickr.getAlbumPhotoList(albumID,FLICKR_ACCESS_KEY):
+	albumList = flickr.getAlbumPhotoList(albumID,FLICKR_ACCESS_KEY)
+	
+	#ensure all referenced images in CSV file exist in album or in database
+	imgsExistCheck = True
+	imgNames = set([name for name,url,desc in albumList])
+	existingMediaIDs = {}
+	
+	for attachment in attachables:
+		try:
+			iid = api.getMedia(attachment,API_SERVER,API_SERVER_TOKEN)
+			existingMediaIDs[attachment] = iid
+		except api.APIWarningException:
+			if attachment not in imgNames:
+				print("Error: Image %s not in databse or new album" % attachment)
+				imgsExistCheck = False
+	
+	if not imgsExistCheck:
+		print("CSV file contains references to images not found in the database or new album.")
+		print("Please remove the references and rerun the program.")
+		quit()
+	
+	#ensure all referenced channels and moments in CSV exist
+	attachablesExist = True
+	for mediaItem in attachables:
+		for attachType, attachName, metSt, metEnd in attachables[mediaItem]:
+			if attachType == 'Moment':
+				try:
+					api.getMoment(attachName,API_SERVER)
+				except api.APIWarningException:
+					print("Error: moment %s referenced in CSV does not exist in database" % attachName)
+					attachablesExist = False
+			else:
+				try:
+					api.getChannel(attachName,API_SERVER)
+				except api.APIWarningException:
+					print("Error: channel %s referenced in CSV does not exist in database" % attachName)
+					attachablesExist = False
+	
+	if not attachablesExist:
+		print("CSV file contains references to moments or channels not found in the database.")
+		print("Please remove these references and rerun the program.")
+		quit()
+	
+	#upload new images
+	for name,url,desc in albumList:
 		s3Filepath = str(s3Folder.joinpath(name+'.jpg'))
 		s3URL = "https://%s.s3.amazonaws.com/%s" % \
 			(S3_BUCKET,s3Filepath)
@@ -155,16 +199,7 @@ if __name__ == "__main__":
 			mID = api.mediaDataUpload(s3URL,name,mission,
 				API_SERVER,API_SERVER_TOKEN)
 		
-		if name in attachables and mID is not None:
-			for attachType,attachName,metStart,metEnd in attachables[name]:
-				if metStart is None:
-					api.mediaAttachableUpload(mID,attachType,
-						attachName,API_SERVER,API_SERVER_TOKEN)
-				else:
-					api.mediaAttachableUpload(mID,attachType,
-						attachName,API_SERVER,API_SERVER_TOKEN,
-						met_start=metStart,met_end=metEnd)
-		
+		#upload image to S3
 		if mID is not None:
 			imgResponse = requests.get(url,stream=True)
 			if imgResponse.ok:
@@ -173,6 +208,19 @@ if __name__ == "__main__":
 			else:
 				print(imgResponse.status_code,imgResponse.text)
 		
+		#add id to list of media attachments
+		if name in attachables and mID is not None:
+			existingMediaIDs[name] = mID
 		
+	#add media attachments
+	for name, mID in existingMediaIDs.items():
+		for attachType,attachName,metStart,metEnd in attachables[name]:
+			if metStart is None:
+				api.mediaAttachableUpload(mID,attachType,
+					attachName,API_SERVER,API_SERVER_TOKEN)
+			else:
+				api.mediaAttachableUpload(mID,attachType,
+					attachName,API_SERVER,API_SERVER_TOKEN,
+					met_start=metStart,met_end=metEnd)
 		
 		
