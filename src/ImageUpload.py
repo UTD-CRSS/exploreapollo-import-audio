@@ -107,12 +107,8 @@ def getAttachablesFromFile(filename):
 			if mediaTitle not in res:
 				res[mediaTitle] = []
 			
-			if metStart is not None:
-				res[mediaTitle].append((attachableType,
-					attachableTitle,metStart,metEnd))
-			else:
-				res[mediaTitle].append((attachableType,
-					attachableTitle,metStart,metEnd))
+			res[mediaTitle].append((attachableType,
+				attachableTitle,metStart,metEnd))
 	
 	if not error:
 		return res
