@@ -68,29 +68,127 @@ def checkMoments(momentDict):
 
 	return goodToUpload
 		
+_CSV_REQUIRED_FIELDS = ['Title', 'met_start', 'met_end', 'Transcript Files', 'Details']
+def validate_csv(reader):
+	"""
+		takes a DictReader object pointing to our csv file and validates the entries.
+		be sure to reset underlying file after calling this function (csvfile.seek(0))
+		Returns a dictionary of rows accessed by Title to be used by later functions
+
+	"""
+
+	#First just check for columns existing
+	precheckPass = True
+	fieldsInFile = set(reader.fieldnames)
+	for req in _CSV_REQUIRED_FIELDS:
+		if req not in fieldsInFile:
+			print("CSV: Required column %s missing in CSV file." % req)
+			precheckPass = False
+
+	if not precheckPass:
+		return None
+
+	#Next validate rows
+	momentDict = {} #list of dictionary items describing each moment. Holds all fields in excel file + "canUpload"
+	global storyDescription
+	error = False #indicate any error in the csv
+	for lineNo, row in enumerate(reader):
+		
+		#check blank rows 
+		blankRow = True
+		for i in row:
+			if row[i] in (None, ""):
+				row[i] = ''	#make sure we can call strip() even if entry isn't given
+			else:
+				blankRow = False
+
+		#skip blank rows
+		if blankRow or (len(row) == 0):
+			continue
+
+
+		rowValid = True
+		title = row['Title'] =  row['Title'].strip()
+		met_start = row['met_start'] = row['met_start'].strip()
+		met_end = row['met_end'] = row['met_end'].strip()
+		transcriptFile = row['Transcript Files'] = row['Transcript Files'].strip()
+		audioFile = row['Audio Files'] = row['Audio Files'].strip()
+		details = row['Details'] = row['Details'].strip()
+
+		if(title == 'Description' or title == 'description'): #just the story description, save and move on
+			storyDescription = details
+			continue
+
+		if(title == ''):
+			rowValid = False
+			print("CSV: Empty Title field found in line %d" % (lineNo+1))
+		if(transcriptFile == ''):
+			rowValid = False
+			print("CSV: Empty Transript File field found in line %d" % (lineNo+1))
+		if(audioFile == ''):
+			rowValid = False
+			print("CSV: Empty Audio File field found in line %d" % (lineNo+1))
+		if(details == ''):
+			rowValid = False
+			print("CSV: Empty Details field found in line %d" % (lineNo+1))
+
+		try:
+			met_start = int(met_start)
+		except ValueError:
+			rowValid = False
+			print("CSV: Given met_start on line %d is not a number" % (lineNo+1))
+			met_start = None
+
+		try:
+ 			met_end = int(met_end)
+		except ValueError:
+			rowValid = False
+			print("CSV: Given met_start on line %d is not a number" % (lineNo+1))
+			met_start = None
+
+		if (met_start is not None) and (met_end is not None):
+ 			if met_start < 0:
+ 				print("CSV: Given met_start on line %d is less than zero" % (lineNo+1))
+ 				rowValid = False
+ 			if met_end < met_start:
+ 				print("CSV: met_end is less than met_start on row %d" % (lineNo+1))
+ 				rowValid = False
+
+		if rowValid:
+ 			row['canUpload'] = True
+ 			momentDict[title] = row
+		else:
+ 			error = True
+
+ 	#make sure user gave a description for story
+	if storyDescription == None: 
+ 		print("CSV: No story description provided. Enter a row with title \"Description\" and add the story description in the \"Details\" field") 
+ 		error = True
+
+	if not error:
+ 		return momentDict
+	else:
+ 		return None
+
+			 
 
 #program begins here
 storyTitle = sys.argv[1] 
 storyDescription = None
 storyID = -1
 
-momentDict = {} #list of dictionary items describing each moment. Holds all fields in excel file + "canUpload"
+momentDict = None #will hold the dictionary returned by validate_csv, or None if csv error
 
 with open('{0}.csv'.format(storyTitle), 'r') as csvfile: 
  
 	reader = csv.DictReader(csvfile)
-	for moment in reader:
-		if(moment['Title'] == ''): #skip blank lines
-			continue
-
-		if(moment['Title'] == 'Description' or moment['Title'] == 'description'): #if its the row with the STORY description
-			storyDescription = moment['Details']
-		else:
-			moment['canUpload'] = True	#assume we can upload it at first -- add dictionary field 
-			momentDict[moment['Title']] = moment
-			  
-
-if(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we're clear to upload
+	momentDict = validate_csv(reader)
+	  
+if(momentDict is None):	  
+	print("Please correct errors in %s.csv then rerun the program." % storyTitle)
+	print("No stories or moments have been uploaded.")
+	quit()
+elif(checkStory(storyTitle) == True and checkMoments(momentDict) == True): #if we're clear to upload
 	#upload story first, get its ID
 	storyID =  upload_story(storyTitle, storyDescription,API_SERVER,API_SERVER_TOKEN)
 
