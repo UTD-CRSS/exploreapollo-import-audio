@@ -18,7 +18,7 @@ def s3Upload(f,bucket,destfile):
 			aws_access_key_id=AWS_ACCESS_KEY,
 			aws_secret_access_key=AWS_SECRET_KEY,
 		)
-	_s3Client.upload_fileobj(f,bucket,destfile)
+	#_s3Client.upload_fileobj(f,bucket,destfile)
 
 
 
@@ -118,25 +118,47 @@ def getAttachablesFromFile(filename):
 
 
 if __name__ == "__main__":
-	if len(sys.argv) != 4 and len(sys.argv) != 5:
-		print("Usage: %s <Flickr album id> <S3 folder> <Mission name> [media attachable csv]" % sys.argv[0])
+	argerror = False
+	if len(sys.argv) > 1 and sys.argv[1] == 'flickr':
+		if len(sys.argv) == 5:
+			albumID = sys.argv[2]
+			s3Folder = pathlib.Path(sys.argv[3])
+			mission = sys.argv[4]
+			attachfile = None
+		elif len(sys.argv) == 6:
+			albumID = sys.argv[2]
+			s3Folder = pathlib.Path(sys.argv[3])
+			mission = sys.argv[4]
+			attachfile = sys.argv[5]
+		else:
+			argerror = True
+	elif len(sys.argv) == 2:
+		albumID = None
+		s3Folder = None
+		mission = None
+		attachfile = sys.argv[1]
+	else:
+		argerror = True
+	
+	if argerror:
+		print("Usage, flickr album: %s flickr <Flickr album id> <S3 folder> <Mission name> [media attachable csv]" % sys.argv[0])
 		print('Ex: %s 0001 photo "Apollo 11"')
+		print("Usage, media attachments only: %s <media attachable csv>" % sys.argv[0])
 		quit()
 	
-	albumID = sys.argv[1]
-	s3Folder = pathlib.Path(sys.argv[2])
-	mission = sys.argv[3]
-	
-	if len(sys.argv) == 5:
-		attachables = getAttachablesFromFile(sys.argv[4])
+	if attachfile is not None:
+		attachables = getAttachablesFromFile(attachfile)
 		if attachables is None:
-			print("Please correct errors in %s then rerun the program." % sys.argv[4])
+			print("Please correct errors in %s then rerun the program." % attachfile)
 			print("No images or media associations have been uploaded.")
 			quit()
 	else:
 		attachables = {}
 	
-	albumList = flickr.getAlbumPhotoList(albumID,FLICKR_ACCESS_KEY)
+	if albumID is not None:
+		albumList = flickr.getAlbumPhotoList(albumID,FLICKR_ACCESS_KEY)
+	else:
+		albumList = []
 	
 	#ensure all referenced images in CSV file exist in album or in database
 	imgsExistCheck = True
@@ -149,11 +171,13 @@ if __name__ == "__main__":
 			existingMediaIDs[attachment] = iid
 		except api.APIWarningException:
 			if attachment not in imgNames:
-				print("Error: Image %s not in databse or new album" % attachment)
+				print(("Error: Image %s not in databse "
+					"or new album") % attachment)
 				imgsExistCheck = False
 	
 	if not imgsExistCheck:
-		print("CSV file contains references to images not found in the database or new album.")
+		print(("CSV file contains references to images not found in "
+			"the database or new album."))
 		print("Please remove the references and rerun the program.")
 		quit()
 	
@@ -165,20 +189,25 @@ if __name__ == "__main__":
 				try:
 					api.getMoment(attachName,API_SERVER)
 				except api.APIWarningException:
-					print("Error: moment %s referenced in CSV does not exist in database" % attachName)
+					print(("Error: moment %s referenced in CSV does not"
+						" exist in database") % attachName)
 					attachablesExist = False
 			else:
 				try:
 					api.getChannel(attachName,API_SERVER)
 				except api.APIWarningException:
-					print("Error: channel %s referenced in CSV does not exist in database" % attachName)
+					print(("Error: channel %s referenced in CSV does "
+						"not exist in database") % attachName)
 					attachablesExist = False
 	
 	if not attachablesExist:
-		print("CSV file contains references to moments or channels not found in the database.")
+		print(("CSV file contains references to moments or channels "
+			"not found in the database."))
 		print("Please remove these references and rerun the program.")
 		quit()
 	
+	newUploads = 0
+	failedUploads = 0
 	#upload new images
 	for name,url,desc in albumList:
 		s3Filepath = str(s3Folder.joinpath(name+'.jpg'))
@@ -197,12 +226,15 @@ if __name__ == "__main__":
 		
 		#upload image to S3
 		if mID is not None:
+			newUploads+=1
 			imgResponse = requests.get(url,stream=True)
 			if imgResponse.ok:
 				with imgResponse.raw as f:
 					s3Upload(f,S3_BUCKET,s3Filepath)
 			else:
 				print(imgResponse.status_code,imgResponse.text)
+		else:
+			failedUploads+=1
 		
 		#add id to list of media attachments
 		if name in attachables and mID is not None:
@@ -218,5 +250,13 @@ if __name__ == "__main__":
 				api.mediaAttachableUpload(mID,attachType,
 					attachName,API_SERVER,API_SERVER_TOKEN,
 					met_start=metStart,met_end=metEnd)
-		
+	
+	print("Completed.")
+	if newUploads > 0:
+		print("%d new images uploaded." % newUploads)
+	if failedUploads > 0:
+		print(("%d images failed to upload.  Check error messages "
+			"- 'title has already been taken' likely means the image "
+			"already exists in system and is not an issue") \
+			% failedUploads) 
 		
