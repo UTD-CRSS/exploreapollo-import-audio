@@ -119,7 +119,8 @@ def getAttachablesFromFile(filename):
 
 if __name__ == "__main__":
 	argerror = False
-	if len(sys.argv) > 1 and sys.argv[1] == 'flickr':
+	if len(sys.argv) > 1 and \
+			(sys.argv[1] == 'flickr' or sys.argv[1] == 'local'):
 		if len(sys.argv) == 5:
 			albumID = sys.argv[2]
 			s3Folder = pathlib.Path(sys.argv[3])
@@ -141,9 +142,15 @@ if __name__ == "__main__":
 		argerror = True
 	
 	if argerror:
-		print("Usage, flickr album: %s flickr <Flickr album id> <S3 folder> <Mission name> [media attachable csv]" % sys.argv[0])
+		print(("Usage, local folder: %s local <local folder> "
+			"<S3 folder> <Mission name> [media attachable csv]") \
+			% sys.srgv[0]
+		print(("Usage, flickr album: %s flickr <Flickr album id> "
+			"<S3 folder> <Mission name> [media attachable csv]") \
+			% sys.argv[0])
 		print('Ex: %s 0001 photo "Apollo 11"')
-		print("Usage, media attachments only: %s <media attachable csv>" % sys.argv[0])
+		print(("Usage, media attachments only: %s "
+			"<media attachable csv>") % sys.argv[0])
 		quit()
 	
 	if attachfile is not None:

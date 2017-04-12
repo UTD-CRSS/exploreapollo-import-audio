@@ -17,7 +17,6 @@ def s3Upload(filename,bucket,destfile):
 			aws_secret_access_key=AWS_SECRET_KEY,
 		)
 	_s3Client.upload_file(filename,bucket,destfile)
-	pass
 
 
 #### ####
