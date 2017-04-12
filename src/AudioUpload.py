@@ -10,13 +10,13 @@ from utils.utils import *
 _s3Client = None
 def s3Upload(filename,bucket,destfile):
 	'''Put a file in s3.'''
-	#~ global _s3Client
-	#~ if _s3Client is None:
-		#~ _s3Client = boto3.client('s3',
-			#~ aws_access_key_id=AWS_ACCESS_KEY,
-			#~ aws_secret_access_key=AWS_SECRET_KEY,
-		#~ )
-	#~ _s3Client.upload_file(filename,bucket,destfile)
+	global _s3Client
+	if _s3Client is None:
+		_s3Client = boto3.client('s3',
+			aws_access_key_id=AWS_ACCESS_KEY,
+			aws_secret_access_key=AWS_SECRET_KEY,
+		)
+	_s3Client.upload_file(filename,bucket,destfile)
 	pass
 
 
