@@ -117,10 +117,21 @@ def getAttachablesFromFile(filename):
 
 
 
+_ALLOWED_IMG_EXTENSIONS = ['.jpg','.jpeg','.png','.gif']
+def localPhotoList(folder):
+	'''get a list of all the photos available as (name, location, 
+	description)'''
+	locations = [loc for loc in pathlib.Path(folder).glob("**/*")
+		if loc.suffix in _ALLOWED_IMG_EXTENSIONS]
+	
+	return [(loc.stem,str(loc),None) for loc in locations]
+	
+
+
 if __name__ == "__main__":
 	argerror = False
-	if len(sys.argv) > 1 and \
-			(sys.argv[1] == 'flickr' or sys.argv[1] == 'local'):
+	if len(sys.argv) > 1 and sys.argv[1] == 'flickr':
+		local = False
 		if len(sys.argv) == 5:
 			albumID = sys.argv[2]
 			s3Folder = pathlib.Path(sys.argv[3])
@@ -128,6 +139,20 @@ if __name__ == "__main__":
 			attachfile = None
 		elif len(sys.argv) == 6:
 			albumID = sys.argv[2]
+			s3Folder = pathlib.Path(sys.argv[3])
+			mission = sys.argv[4]
+			attachfile = sys.argv[5]
+		else:
+			argerror = True
+	elif len(sys.argv) > 1 and sys.argv[1] == 'local':
+		local = True
+		if len(sys.argv) == 5:
+			lFolder = sys.argv[2]
+			s3Folder = pathlib.Path(sys.argv[3])
+			mission = sys.argv[4]
+			attachfile = None
+		elif len(sys.argv) == 6:
+			lFolder = sys.argv[2]
 			s3Folder = pathlib.Path(sys.argv[3])
 			mission = sys.argv[4]
 			attachfile = sys.argv[5]
@@ -144,7 +169,7 @@ if __name__ == "__main__":
 	if argerror:
 		print(("Usage, local folder: %s local <local folder> "
 			"<S3 folder> <Mission name> [media attachable csv]") \
-			% sys.srgv[0]
+			% sys.argv[0])
 		print(("Usage, flickr album: %s flickr <Flickr album id> "
 			"<S3 folder> <Mission name> [media attachable csv]") \
 			% sys.argv[0])
@@ -162,8 +187,10 @@ if __name__ == "__main__":
 	else:
 		attachables = {}
 	
-	if albumID is not None:
+	if not local and albumID is not None:
 		albumList = flickr.getAlbumPhotoList(albumID,FLICKR_ACCESS_KEY)
+	elif local and lFolder is not None:
+		albumList = localPhotoList(lFolder)
 	else:
 		albumList = []
 	
@@ -216,8 +243,9 @@ if __name__ == "__main__":
 	newUploads = 0
 	failedUploads = 0
 	#upload new images
-	for name,url,desc in albumList:
-		s3Filepath = str(s3Folder.joinpath(name+'.jpg'))
+	for name,loc,desc in albumList:
+		fileext = pathlib.Path(loc).suffix
+		s3Filepath = str(s3Folder.joinpath(name+fileext))
 		s3URL = "https://%s.s3.amazonaws.com/%s" % \
 			(S3_BUCKET,s3Filepath)
 		
@@ -231,15 +259,19 @@ if __name__ == "__main__":
 			mID = api.mediaDataUpload(s3URL,name,mission,
 				API_SERVER,API_SERVER_TOKEN)
 		
-		#upload image to S3
+		#upload image to S3 if necessary
 		if mID is not None:
 			newUploads+=1
-			imgResponse = requests.get(url,stream=True)
-			if imgResponse.ok:
-				with imgResponse.raw as f:
+			if local: #get image from local path
+				with open(loc,'br') as f:
 					s3Upload(f,S3_BUCKET,s3Filepath)
-			else:
-				print(imgResponse.status_code,imgResponse.text)
+			else: #get image from flickr
+				imgResponse = requests.get(loc,stream=True)
+				if imgResponse.ok:
+					with imgResponse.raw as f:
+						s3Upload(f,S3_BUCKET,s3Filepath)
+				else:
+					print(imgResponse.status_code,imgResponse.text)
 		else:
 			failedUploads+=1
 		
