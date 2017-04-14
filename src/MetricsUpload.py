@@ -47,3 +47,62 @@ for filepath in metricFiles:
 		tempData = ast.literal_eval(data_file.read().replace('array(', '"').replace(')', '"').replace('\n', '')) #ew
 	
 	print(tempData)	
+
+
+	#upload wordcounts
+	for i, wordCount in enumerate(tempData['word_count']): 
+		Type = "WordCount"
+		met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
+		met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
+		channel_id = channel 
+		data = {
+			'count'	:	wordCount
+		}	
+
+		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+
+	#upload nturns	
+	for i, nturns in enumerate(tempData['nturns']):
+		Type = "Nturns"
+		met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
+		met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
+		channel_id = channel 
+		data = {
+			'count'	:	nturns
+		}	
+
+		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+
+	#upload conversation counts
+	for i, conversationCount in enumerate(tempData['conversation_count']):
+		Type = "ConversationCount"
+		met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
+		met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
+		channel_id = channel 
+		data = {
+			'count'	:	conversationCount
+		}	
+
+		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+
+	#upload speakers 
+	Type = "Speakers"
+	met_start = int(fileMetStart)
+	met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
+	channel_id = channel
+	data = {
+		'names'	:	list_to_json_string(tempData['speakers'])
+	}
+
+	upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+
+
+	Type = "InteractionMatrix"
+	met_start = int(fileMetStart)
+	met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
+	channel_id = channel
+	data = {
+		'matrix'	:	tempData['interaction_matrix']
+	}
+
+	upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
