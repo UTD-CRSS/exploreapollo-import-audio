@@ -138,7 +138,7 @@ def getMoment(name,server):
 		return _momentIndex[name]
 	else:
 		raise APIWarningException(
-			"No matching moment found with name %s % name")
+			"No matching moment found with name %s" % name)
 	
 
 _personIndex = None
@@ -163,6 +163,31 @@ def getPerson(name,server,token):
 	else:
 		_personIndex[name] = personUpload(name,server,token)
 		return _personIndex[name]
+
+
+_mediaIndex = None
+def getMedia(name,server,token):
+	'''obtain the ID of an existing media item or raise an exception
+	if not found.'''
+	global _mediaIndex
+	if _mediaIndex is None:
+		try:
+			response = requests.get(_constructURL(server,MEDIA_API))
+		except requests.exceptions.ConnectionError:
+			raise APIFatalException("Failed to connect to server at %s" % server)
+		
+		if response.ok:
+			_mediaIndex = {item['title']:item['id'] for item \
+				in response.json()}
+		else:
+			raise APIFatalException("Failed to collect existing media IDs")
+	
+	if name in _mediaIndex:
+		return _mediaIndex[name]
+	else:
+		raise APIWarningException(
+			"No matching media found with name %s" % name)
+		
 
 def getStory(title,server,token):
 	'''
