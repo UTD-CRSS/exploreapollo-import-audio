@@ -59,8 +59,8 @@ if __name__ == "__main__":
 			.relative_to(localFolder))
 		
 		#s3 upload
-		s3Upload(txtFilepath,S3_BUCKET,s3TxtFilepath)
-		s3Upload(wavFilepath,S3_BUCKET,s3WavFilepath)
+		s3Upload(txtFilepath,S3_BUCKET,str(s3TxtFilepath))
+		s3Upload(wavFilepath,S3_BUCKET,str(s3WavFilepath))
 		
 		#API server upload
 		s3WavURL = "https://%s.s3.amazonaws.com/%s" % \

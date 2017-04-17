@@ -4,10 +4,12 @@ To use, copy src/config-sample.py to src/config.py, and fill in the
 dummy values.  Note that values relating to Flickr are only necessary
 for ImageUpload.
 To run,
-	python TransferS3Data.py 
+	python TransferS3Data.py [channel met_start met_end]
 	python TransferS3Metrics.py 
 	python AudioUpload.py <local base folder> <S3 base folder>
-	python ImageUpload.py <Flickr album id> <S3 folder> <Mission name> [media attachable csv]
+	python ImageUpload.py flickr <Flickr album id> <S3 folder> <Mission name> [media attachable csv]
+	python ImageUpload.py local <local base folder> <S3 folder> <Mission name> [media attachable csv]
+	python ImageUpload.py <media attachable csv>
 	python storyUpload.py <.csv file with extension>
 
 
@@ -35,11 +37,15 @@ If the call looks like
 then a file basefolder/subfolder/file.txt is uploaded as 
 audio/subfolder/file.txt in S3.
 
-ImageUpload.py - Copies a Flickr album over to S3 and fills in database 
+ImageUpload.py - When given 'flickr' as the first argument, copies a Flickr 
+album over to S3 and fills in database 
 information.  Providing the optional csv file will also attach the images
 to moments and channels specified in the csv file.  For an example of such
 a csv file, see src/examples/mediaAssociation.  The image titles referenced
-there must match those found in Flickr.
+there must match those found in Flickr.  The script will also upload local
+files, by changing the first argument to 'local'.  Finally, providing only
+a csv file as an argument attaches images already in the database to moments
+and channels that are already in the database.
 
 storyUpload.py - Takes a csv file (check out template in examples/Splashdown.csv) and 
 uploads corresponding moments & story. The story name is the name of the .csv file
@@ -56,3 +62,4 @@ FileManager.py - no longer used.
 ExtractMET.py - used ONLY to create a11-timestamps.csv, an attempt to 
 extract MET times from a webpage.  Read the file for more info.
 
+For more detailed information, check the wiki page on GitHub at https://github.com/UTD-CRSS/exploreapollo-import-audio/wiki
