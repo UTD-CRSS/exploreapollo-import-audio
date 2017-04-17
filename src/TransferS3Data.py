@@ -52,8 +52,6 @@ if __name__ == "__main__":
 		bucket.download_file(txt.key,'tmp.txt')
 		bucket.download_file(wav.key,'tmp.wav')
 		
-		print(name)
-		
 		APIConn.transcriptUpload('tmp.txt',channel,fileMetStart,
 			API_SERVER,API_SERVER_TOKEN,txt.key)
 		APIConn.audioDataUpload('tmp.wav',
