@@ -48,72 +48,81 @@ for name, jsonobj in objcollection.items():
 	if os.path.getsize('tmp.json') <= 0: #skip empty json files.. 
 		continue
 
+	print(jsonobj.key)
 	
 
+	if not validate_metric_json('tmp.json'):
+		print ("Skipping file %s, please correct above errors.." % (jsonobj.key))
+		continue
+
 	with open('tmp.json') as data_file:   
-		#print (data_file.read())
-		tempData = ast.literal_eval(data_file.read().replace('array(', '"').replace(')', '"').replace('\n', '')) #ew
+		dataread = data_file.read().replace('\n', '') #get rid of newline in string literals in json  
+		tempData = json.loads(dataread)
 	
-	print(tempData)	
+	
 	
 
 	#upload wordcounts
-	for i, wordCount in enumerate(tempData['word_count']): 
-		Type = "WordCount"
-		met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
-		met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
-		channel_id = channel 
-		data = {
-			'count'	:	wordCount
-		}	
+	if 'word_count' in tempData:
+		for i, wordCount in enumerate(tempData['word_count']): 
+			Type = "WordCount"
+			met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
+			met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
+			channel_id = channel 
+			data = {
+				'count'	:	wordCount
+			}	
 
-		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+			upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
 
-	#upload nturns	
-	for i, nturns in enumerate(tempData['nturns']):
-		Type = "Nturns"
-		met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
-		met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
-		channel_id = channel 
-		data = {
-			'count'	:	nturns
-		}	
+	#upload nturns
+	if 'nturns' in tempData:	
+		for i, nturns in enumerate(tempData['nturns']):
+			Type = "Nturns"
+			met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
+			met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
+			channel_id = channel 
+			data = {
+				'count'	:	nturns
+			}	
 
-		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+			upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
 
 	#upload conversation counts
-	for i, conversationCount in enumerate(tempData['conversation_count']):
-		Type = "ConversationCount"
-		met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
-		met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
-		channel_id = channel 
+	if 'conversation_count' in tempData:
+		for i, conversationCount in enumerate(tempData['conversation_count']):
+			Type = "ConversationCount"
+			met_start = int(fileMetStart) + int(float(tempData['start_time'][i]) * 1000) 
+			met_end = int(fileMetStart) + int(float(tempData['end_time'][i]) * 1000)
+			channel_id = channel 
+			data = {
+				'count'	:	conversationCount
+			}	
+
+			upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+
+	#upload speakers 
+	if 'speakers' in tempData:
+		Type = "Speakers"
+		met_start = int(fileMetStart)
+		met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
+		channel_id = channel
 		data = {
-			'count'	:	conversationCount
-		}	
+			'names'	:	list_to_json_string(tempData['speakers'])
+		}
 
 		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
 
-	#upload speakers 
-	Type = "Speakers"
-	met_start = int(fileMetStart)
-	met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
-	channel_id = channel
-	data = {
-		'names'	:	list_to_json_string(tempData['speakers'])
-	}
+	if 'interaction_matrix' in tempData:	
+		Type = "InteractionMatrix"
+		met_start = int(fileMetStart)
+		met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
+		channel_id = channel
+		data = {
+			'matrix'	:	tempData['interaction_matrix']
+		}
 
-	upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
-
-
-	Type = "InteractionMatrix"
-	met_start = int(fileMetStart)
-	met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
-	channel_id = channel
-	data = {
-		'matrix'	:	tempData['interaction_matrix']
-	}
-
-	upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
+		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
 
 	
 	
