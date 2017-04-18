@@ -1,67 +1,60 @@
 import boto3
+import sys
 import os
-from config import *
-from utils.utils import *
-from utils.APIConn import *
+import pathlib
 import json
+from config import * 
+from utils.APIConn import *
+from utils.utils import * 
 import ast
 
+#taken from AudioUpload.py
+_s3Client = None
+def s3Upload(filename, bucket, destfile):
+	global _s3Client
+	if _s3Client is None:
+		_s3Client = boto3.client('s3',
+			aws_access_key_id=AWS_ACCESS_KEY,
+			aws_secret_access_key=AWS_SECRET_KEY,
+			)
+	_s3Client.upload_file(filename, bucket, destfile)
+	pass
 
-
-
-if len(sys.argv) == 1:
-		target_channel = met_min = met_max = None
-elif len(sys.argv) == 4:
-	target_channel   = int(sys.argv[1])
-	met_min = int(sys.argv[2])
-	met_max   = int(sys.argv[3])
-else:
-	print("Usage: %s [channel met_min met_max]" % sys.argv[0])
+if len(sys.argv) != 3:
+	print("Usage: python3 %s <local base folder> <S3 base folder>" % sys.argv[0])
 	quit()
+else:
+	localFolder = sys.argv[1]
+	s3Folder = pathlib.Path(sys.argv[2])
 
+metricFiles = set( str(i) for i in pathlib.Path(localFolder).glob("**/*.json"))
 
-s3 = boto3.session.Session(aws_access_key_id=AWS_ACCESS_KEY,
-		aws_secret_access_key=AWS_SECRET_KEY).resource('s3')
-bucket = s3.Bucket(S3_BUCKET)
-
-objcollection = {} #objcollection['fname_no_ext'] = jsonobj
-	
-numobjs = 0
-for obj in bucket.objects.all(): # get all files in all folders? (graphical data, audio, static imgs?)
-	name,ext = os.path.splitext(obj.key)
-	if(ext == '.json'):
-		objcollection[name] = obj
-		numobjs+=1
-
-itemno = 1
-for name, jsonobj in objcollection.items():
-	
-	mission, recorder, channel, fileMetStart = filenameToParams(jsonobj.key) #need channel, fileMetStart (ms)
-
-	if met_max is not None and (fileMetStart > met_max or fileMetStart < met_min or channel != target_channel):
-		continue
-
-	print("%s (%d/%d)" % (name,itemno,numobjs))
-	itemno+=1
-
-	bucket.download_file(jsonobj.key,'tmp.json')
-	if os.path.getsize('tmp.json') <= 0: #skip empty json files.. 
-		continue
-
-	print(jsonobj.key)
+for filepath in metricFiles:
 	
 
-	if not validate_metric_json('tmp.json'):
-		print ("Skipping file %s, please correct above errors.." % (jsonobj.key))
+	s3Filepath = str(s3Folder.joinpath(pathlib.Path(filepath).relative_to(localFolder)))
+
+	print(filepath)
+	
+
+	if not validate_metric_json(filepath):
+		print ("Skipping file %s, please correct above errors.." % (filepath))
 		continue
 
-	with open('tmp.json') as data_file:   
+	print ("Uploading to %s in s3 bucket..." % s3Filepath)
+	#upload to S3
+	s3Upload(filepath, S3_BUCKET, s3Filepath)
+
+
+	#upload to api server
+	mission, recorder, channel, fileMetStart = filenameToParams(str(pathlib.Path(filepath).relative_to(localFolder))) #need channel, fileMetStart (ms)
+
+	with open(filepath) as data_file: 
 		dataread = data_file.read().replace('\n', '') #get rid of newline in string literals in json  
 		tempData = json.loads(dataread)
-	
-	
-	
+		#tempData = ast.literal_eval(data_file.read().replace('array(', '"').replace(')', '"').replace('\n', '')) #ew
 
+	
 	#upload wordcounts
 	if 'word_count' in tempData:
 		for i, wordCount in enumerate(tempData['word_count']): 
@@ -101,8 +94,8 @@ for name, jsonobj in objcollection.items():
 
 			upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
 
-	#upload speakers 
-	if 'speakers' in tempData:
+	#upload speakers
+	if 'speakers' in tempData: 
 		Type = "Speakers"
 		met_start = int(fileMetStart)
 		met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
@@ -113,7 +106,7 @@ for name, jsonobj in objcollection.items():
 
 		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
 
-	if 'interaction_matrix' in tempData:	
+	if 'interaction_matrix' in tempData:
 		Type = "InteractionMatrix"
 		met_start = int(fileMetStart)
 		met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
@@ -123,10 +116,5 @@ for name, jsonobj in objcollection.items():
 		}
 
 		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
-
-	
-	
-
-
 
 	
