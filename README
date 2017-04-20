@@ -7,6 +7,7 @@ To run,
 	python TransferS3Data.py [channel met_start met_end]
 	python TransferS3Metrics.py 
 	python AudioUpload.py <local base folder> <S3 base folder>
+	python MetricsUpload.py <local base folder> <S3 base folder> 
 	python ImageUpload.py flickr <Flickr album id> <S3 folder> <Mission name> [media attachable csv]
 	python ImageUpload.py local <local base folder> <S3 folder> <Mission name> [media attachable csv]
 	python ImageUpload.py <media attachable csv>
@@ -36,6 +37,16 @@ If the call looks like
 	python AudioUpload.py basefolder/ audio/
 then a file basefolder/subfolder/file.txt is uploaded as 
 audio/subfolder/file.txt in S3.
+
+MetricsUpload.py -  Finds metric files (.json) on the local machine,
+uploads them to S3, and puts metric entries into the database..  
+MetricsUpload finds all .json files found in the local base folder,
+and preserves the directory structure as much as possible.
+If the call looks like
+	python MetricsUpload.py basefolder/ metrics/
+then a file basefolder/subfolder/file.txt is uploaded as 
+metrics/subfolder/file.txt in S3.
+ 
 
 ImageUpload.py - When given 'flickr' as the first argument, copies a Flickr 
 album over to S3 and fills in database 
