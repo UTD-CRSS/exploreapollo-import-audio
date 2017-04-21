@@ -29,8 +29,8 @@ def list_to_json_string(origlist):
 	jsonListString = '['
 
 	for element in origlist[:-1]: 
-		jsonListString += '\'{0}\','.format(element)
-	jsonListString+= '\'{0}\']'.format(origlist[-1]) 
+		jsonListString += '\"{0}\",'.format(element)
+	jsonListString+= '\"{0}\"]'.format(origlist[-1]) 
 
 
 	return jsonListString
