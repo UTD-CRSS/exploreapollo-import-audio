@@ -100,8 +100,16 @@ for filepath in metricFiles:
 		met_start = int(fileMetStart)
 		met_end = int(fileMetStart) + int(max(list(map(float, tempData['end_time']))) * 1000)
 		channel_id = channel
+
+		id_list = []
+
+		for i, speakerName in enumerate(tempData['speakers']):
+			person_id = getPerson(speakerName.strip(), API_SERVER, API_SERVER_TOKEN)
+			id_list.append(person_id)
+
 		data = {
-			'names'	:	list_to_json_string(tempData['speakers'])
+			'names'	:	list_to_json_string(tempData['speakers']),
+			'ids'	:	list_to_json_string(id_list)
 		}
 
 		upload_metric(Type, met_start, met_end, channel_id, data, API_SERVER , API_SERVER_TOKEN)
