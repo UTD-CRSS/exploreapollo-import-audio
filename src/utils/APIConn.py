@@ -238,6 +238,7 @@ def getTranscriptItems(met_start, met_end, server, token):
 	else:
 		raise APIFatalException("Failed to collect existing transcript items")	
 
+
 def getAudioSegments(met_start, met_end, server, token):
 	'''
 		get all audio segement items with met_start times from
@@ -264,8 +265,6 @@ def getAudioSegments(met_start, met_end, server, token):
 		raise APIFatalException("Failed to collect existing audio segments")
 	
 
-
-
 def personUpload(name,server,token):
 	'''put a new dummy person in the API server, return ID'''
 	headers = {'Authorization':"Token token=%s" % token,
@@ -274,7 +273,6 @@ def personUpload(name,server,token):
 	json = {
 		"name" : name,
 		"title" : "%s-dummy" % name,
-		"photo_url" : "exploreapollo.com",
 	}
 	try:
 		response = requests.post(_constructURL(server,PEOPLE_API),
@@ -505,6 +503,7 @@ def mediaAttachableUpload(mediaId,attachableType,attachableName,
 			mediaId,response.status_code,response.text),
 			file=sys.stderr) 
 
+
 def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id, story_id, server, token):
 	'''
 		upload a moment
@@ -533,6 +532,7 @@ def upload_moment(momentTitle, momentDescription, met_start, met_end, channel_id
 		raise APIFatalException("Failed to connect to server at %s" % server)
 	except APIFatalException as e:
 		raise e
+
 
 def upload_story(storyTitle, storyDescription, server, token):
 	'''
@@ -569,6 +569,7 @@ def upload_story(storyTitle, storyDescription, server, token):
 		raise e
     
 	return storyID
+
 
 def upload_metric(Type, met_start, met_end, channel_id, data, server,token):
 	'''
