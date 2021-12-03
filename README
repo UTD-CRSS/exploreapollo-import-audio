@@ -73,4 +73,23 @@ FileManager.py - no longer used.
 ExtractMET.py - used ONLY to create a11-timestamps.csv, an attempt to 
 extract MET times from a webpage.  Read the file for more info.
 
+audio-upload.py - meant to iterate through a directory of audio clips and combine two with 
+corresponding names before taking a clip from a specified time frame and outputting it as two 
+5-minute-long files. This is done because multi-channel audio only supports the upload of audio 
+files 5 minutes or less in duration.
+
+Before running the script, use a .env file to set the appropriate AWS access key and secret key.
+After writing those into the .env file call 'source .env' to make them accessible in the python
+script.
+
+The script takes command line arguments to run. These arguments are as follows: startTime, endTime, 
+readDirectory, writeDirectory. Start time and end time are ints and read and write directories are strings 
+that correspond to directories. Read directory is referring to the local directory the audio is stored 
+in and write directory is the directory in s3 that the audio is being uploaded to. An example command
+could look like this: 'python audio-upload.py 1500 2100 audio Lunar_Sighting' Save the output 
+of the script for the next step.
+This script was made very specifically to work with the audio as we were given it in the fall of 2021, 
+but components of it can be repurposed if this changes.
+
+
 For more detailed information, check the wiki page on GitHub at https://github.com/UTD-CRSS/exploreapollo-import-audio/wiki
